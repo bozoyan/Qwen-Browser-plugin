@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Gua Step3反推+魔搭生图",
+  "name": "图片反推+魔搭生图",
   "version": "1.0.0",
-  "description": "基于Step3模型的图片内容分析与魔搭图片生成工具",
+  "description": "基于VL模型的图片内容分析与魔搭图片生成工具",
   "permissions": [
     "storage",
     "activeTab",
@@ -17,7 +17,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Gua Step3反推+魔搭生图"
+    "default_title": "图片反推+魔搭生图"
   },
   "icons": {
     "16": "icons/icon16.png",

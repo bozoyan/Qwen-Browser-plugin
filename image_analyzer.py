@@ -40,7 +40,7 @@ def analyze_image(image_path, api_key):
             
             # 发送请求
             response = client.chat.completions.create(
-                # model='stepfun-ai/step3',  # ModelScope Model-Id
+                # model='stepfun-ai/Step3',  # ModelScope Model-Id
                 model='Qwen/Qwen2.5-VL-72B-Instruct',  # ModelScope Model-Id
                 messages=[{
                     'role': 'user',

@@ -39,6 +39,7 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 - **核心逻辑** ：
   - `image_analyzer.py` ：使用Qwen2.5-VL处理将图像反转为文本提示的逻辑。
   - `routes.py` ：定义图像分析和生成的 API 端点。
+  - `config.py`：将config.py.template重名为config.py，然后输入key与cookie。
 - **浏览器扩展** ：使用标准 WebExtension API（ `manifest.json` 、 `background.js` 、 `content.js` ）构建。
 
 ## 浏览器扩展 项目结构
@@ -69,13 +70,13 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
     ```bash
     pip install -r requirements.txt
     ```
-
+![](images/pip.png)
 2.  **运行后端服务器** ：从项目根目录启动 Flask 服务器：
 
     ```bash
     python web_app.py
     ```
-
+![](images/python.png)
     服务器将从 `http://127.0.0.1:8005` 启动。
 
 3.  **加载浏览器扩展** ：
@@ -114,8 +115,9 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 
 [](#how-to-use)
 
-1.  导航到任何包含您想要使用的图像的网页。
-2.  右键单击所需的图像。
-3.  从上下文菜单中选择“反推生图”。
-4.  将出现一个模态窗口。它将首先显示生成的提示，然后显示四张新生成的图像。
-5.  您可以点击底部的缩略图在主显示区域中查看每个生成的图像。
+1. 导航到任何包含您想要使用的图像的网页。右键单击所需的图像。
+![](images/pic.png)
+2. 从上下文菜单中选择“反推生图”。将出现一个模态窗口。它将首先显示生成的提示，然后显示四张新生成的图像。
+![](images/pics.png)
+3. 您可以点击底部的缩略图在主显示区域中查看每个生成的图像。在终端界面上，也会显示进度消息提示。
+![](images/app.png)
