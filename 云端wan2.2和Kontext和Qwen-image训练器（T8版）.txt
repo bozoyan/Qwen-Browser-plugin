@@ -1,0 +1,17 @@
+晨羽智云Wan2.2训练镜像(T8版)：https://www.chenyu.cn/console/newShare?uuid=7ddb9b7552b54f1f89ec84d1ee04b49d&invitationCode=NGT5S4
+晨羽智云Kontext训练镜像(T8版)：https://www.chenyu.cn/console/newShare?uuid=e0fee1b741e543238014e1c87ddcd67a&invitationCode=NGT5S4
+Qwen-Image训练镜像(T8版)：https://www.chenyu.cn/console/newShare?uuid=2e12b9eee02742d89c3936ad31627dbe&invitationCode=NGT5S4
+新版（Diffusion Pipe高质量）Qwen-Image训练镜像：https://www.chenyu.cn/console/newShare?uuid=27889f983c034a77ad1897e5d34b304d&invitationCode=NGT5S4
+
+
+
+更多镜像陆续更新，可搜索：t8star
+
+0.1=5的券 300张：W6TGFF 
+
+30 =45的券 300张：T8AIGC
+
+50=100粉丝福利每个都可领取，每个号一次： 50VS50
+
+卡：24G 3090 32G 4080 48G 4090
+

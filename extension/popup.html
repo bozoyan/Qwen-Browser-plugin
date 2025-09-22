@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片反推+魔搭生图</title>
+    <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>🎨 图片反推+魔搭生图</h1>
+            <button id="settingsBtn" class="settings-btn" title="设置">⚙️</button>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <!-- 图片上传区域 -->
+            <div class="upload-section">
+                <div id="fileDropArea" class="file-drop-area">
+                    <input type="file" id="fileInput" class="file-input" accept=".png,.jpg,.jpeg,.gif,.bmp" />
+                    
+                    <!-- 拖放提示 -->
+                    <div id="dropPlaceholder" class="drop-placeholder">
+                        <div class="feature-icon">📁</div>
+                        <p>拖放图片到此处，或点击上传</p>
+                        <p class="text-muted">(支持 PNG、JPG、JPEG、GIF、BMP)</p>
+                    </div>
+                    
+                    <!-- 图片预览 -->
+                    <div id="imagePreview" class="image-preview" style="display: none;">
+                        <img id="previewImg" src="" alt="预览图片">
+                    </div>
+                </div>
+
+                <!-- 上传进度 -->
+                <div id="uploadProgress" class="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                    <span id="progressText">上传中...</span>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <button id="analyzeBtn" class="btn btn-primary" disabled>反推并生成</button>
+                </div>
+            </div>
+
+            <!-- 生成结果区域 -->
+            <div class="result-section">
+                <!-- 排队信息 -->
+                <div id="queueInfo" class="queue-info" style="display: none;">
+                    <h3>正在处理中</h3>
+                    <p id="queueDetail">正在获取排队信息...</p>
+                    <div class="progress-bar">
+                        <div id="queueProgress" class="progress-fill"></div>
+                    </div>
+                </div>
+                
+                <!-- 主预览区域 -->
+                <div id="mainPreview" class="main-preview">
+                    <div class="preview-placeholder">
+                        选择下方缩略图查看
+                    </div>
+                </div>
+                
+                <!-- 缩略图区域 -->
+                <div id="thumbnailsContainer" class="thumbnails-container">
+                    <!-- 缩略图将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- 设置面板 -->
+        <div id="settingsPanel" class="settings-panel" style="display: none;">
+            <div class="settings-header">
+                <h3>设置</h3>
+                <button id="closeSettings" class="close-btn">×</button>
+            </div>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="openaiKey">OpenAI API Key:</label>
+                    <input type="password" id="openaiKey" placeholder="输入你的OpenAI API Key">
+                </div>
+                <div class="setting-item">
+                    <label for="modelScopeCookie">ModelScope Cookie:</label>
+                    <textarea id="modelScopeCookie" placeholder="输入你的ModelScope Cookie" rows="4"></textarea>
+                </div>
+                <div class="setting-item">
+                    <label for="imageWidth">图片宽度:</label>
+                    <input type="number" id="imageWidth" value="1104" min="256" max="2048">
+                </div>
+                <div class="setting-item">
+                    <label for="imageHeight">图片高度:</label>
+                    <input type="number" id="imageHeight" value="1472" min="256" max="2048">
+                </div>
+                <div class="settings-actions">
+                    <button id="saveSettings" class="btn btn-primary">保存设置</button>
+                    <button id="resetSettings" class="btn btn-secondary">重置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知容器 -->
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
+
+    <script src="scripts/config.js"></script>
+    <script src="scripts/utils.js"></script>
+    <script src="scripts/ui.js"></script>
+    <script src="scripts/api.js"></script>
+    <script src="scripts/popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# 图片反推+魔搭生图 Web应用依赖
+# 使用国内镜像源加速安装：pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+Flask>=2.0.0
+requests>=2.25.1
+openai>=1.0.0
+Werkzeug>=2.0.0
+Flask-Cors>=3.0.0
