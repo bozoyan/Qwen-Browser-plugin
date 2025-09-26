@@ -10,7 +10,8 @@
 
 T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 
-我并将详细的修改调整使用教程写了出来。Lora模型可以在 https://modelscope.cn/aigc/models [魔搭AIGC专区](https://modelscope.cn/aigc/models)网页中查找。
+我并将详细的修改调整使用教程写了出来。Lora模型可以在 https://modelscope.cn/aigc/models 
+[魔搭AIGC专区](https://modelscope.cn/aigc/models)网页中查找。
 
 ## 概述
 
