@@ -4,7 +4,7 @@ here = os.path.dirname(os.path.abspath(__file__))
 
 # 配置上传文件夹和允许的文件扩展名
 UPLOAD_FOLDER = os.path.join(here, 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
+ALLOWED_EXTENSIONS = {'webp','png', 'jpg', 'jpeg', 'gif', 'bmp'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB上传限制
 
 # 在这里配置您的API Key和Cookie

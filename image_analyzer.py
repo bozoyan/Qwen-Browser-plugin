@@ -50,7 +50,9 @@ def analyze_image(image_path, api_key):
                     }, {
                         'type': 'image_url',
                         'image_url': {
-                            'url': f"data:image/jpeg;base64,{base64_image}",
+                            'url': f"data:image/webp;base64,{base64_image}",
+                            # 'url': f"data:image/jpeg;base64,{base64_image}",
+                            # 'url': f"data:image/png;base64,{base64_image}",
                         },
                     }],
                 }],
