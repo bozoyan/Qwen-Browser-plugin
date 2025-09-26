@@ -3,7 +3,11 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-uploads/**
+# 忽略 uploads 文件夹中的所有文件
+/uploads/*
+
+# 确保 uploads 文件夹本身不被忽略
+!/uploads/
 
 .DS_Store
 config.py
