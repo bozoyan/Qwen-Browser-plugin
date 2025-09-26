@@ -41,7 +41,7 @@ def analyze_image(image_path, api_key):
             # 发送请求
             response = client.chat.completions.create(
                 # model='stepfun-ai/Step3',  # ModelScope Model-Id
-                model='Qwen/Qwen2.5-VL-72B-Instruct',  # ModelScope Model-Id
+                model='Qwen/Qwen3-VL-235B-A22B-Instruct',  # ModelScope Model-Id
                 messages=[{
                     'role': 'user',
                     'content': [{
@@ -84,9 +84,9 @@ def analyze_image(image_path, api_key):
                 else:
                     return False, "未获取到反推结果，请重试。"
             else:
-                return False, "Qwen2.5-VL API返回格式异常。"
+                return False, "Qwen3-VL API返回格式异常。"
         except Exception as e:
-            error_msg = f"Qwen2.5-VL反推时出错: {str(e)}"
+            error_msg = f"Qwen3-VL反推时出错: {str(e)}"
             logging.error(error_msg)
             return False, error_msg
     except Exception as e:

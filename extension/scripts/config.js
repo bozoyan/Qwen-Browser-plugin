@@ -35,8 +35,8 @@ const CONFIG = {
         
         // LoRA 参数
         LORA_ARGS: [
-            // { modelVersionId: 310150, scale: 1 },
-            { modelVersionId: 313167, scale: 1 }
+            { modelVersionId: 310150, scale: 1 }
+            // { modelVersionId: 313167, scale: 1 }
         ]
     },
     

@@ -129,7 +129,7 @@ class APIManager {
      */
     async generateImage(prompt, settings) {
         const url = `${this.baseUrl}${CONFIG.API.ENDPOINTS.GENERATE}`;
-        const F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a woman,妃妃,";
+        const F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,妃妃,";
 
         const requestData = {
             prompt: F_prompt + prompt,
