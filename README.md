@@ -131,3 +131,11 @@ extension_popup 是图片大图显示弹窗版。
 ![](images/pics.png)
 3. 您可以点击底部的缩略图在主显示区域中查看每个生成的图像。在终端界面上，也会显示进度消息提示。
 ![](images/app.png)
+
+### 3.错误提示
+如果有如下提示，可能是反推接口延时或者超时。如果终端数据响应消息在显示，可以到
+魔搭的图片资源库里面去查询生成的图片
+https://modelscope.cn/aigc/gallery
+[魔搭资源库](https://modelscope.cn/aigc/gallery)
+
+![](images/error.png)
