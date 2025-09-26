@@ -152,7 +152,7 @@ def generate_image_proxy():
                 'message': '请先发送完整的生成请求',
                 'is_completed': False
             })
-        F_prompt="feifei,a photo-realistic shoot from a portrait camera angle about a young woman,妃妃,"        
+        F_prompt="feifei,a photo-realistic shoot from a portrait camera angle about a young woman,big boobs,妃妃,"        
         # 构建请求参数 - 尝试多种可能的任务类型参数名称
         request_body = {
             'taskType': 'TXT_2_IMG',  # 原始参数名
