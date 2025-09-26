@@ -4,10 +4,10 @@ __pycache__/
 *$py.class
 
 # 忽略 uploads 文件夹中的所有文件
-/uploads/*
+/backup/*
 
 # 确保 uploads 文件夹本身不被忽略
-!/uploads/
+!/backup/
 
 .DS_Store
 config.py

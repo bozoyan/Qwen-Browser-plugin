@@ -80,17 +80,17 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
     ```bash
     pip install -r requirements.txt
     ```
-![](images/pip.png)
+![](images/pip.webp)
 2.  **运行后端服务器** ：从项目根目录启动 Flask 服务器：
 
     ```bash
     python web_app.py
     ```
-![](images/python.png)
+![](images/python.webp)
     服务器将从 `http://127.0.0.1:8005` 启动。
 
 3.  **加载浏览器扩展** ：
-![](images/chrome.png)
+![](images/chrome.webp)
     - 打开您的浏览器（例如 Chrome、Edge）。
     - 导航到扩展管理页面（例如， `chrome://extensions` ）。
     - 启用“开发者模式”。
@@ -101,7 +101,7 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 - 打开config.py文件可以设定key、cookie、LORA模型和自定义尺寸
 魔搭KEY地址：https://modelscope.cn/my/myaccesstoken
 [魔搭KEY地址](https://modelscope.cn/my/myaccesstoken)
-![](images/key.png)
+![](images/key.webp)
 
 - 使用魔搭社区在快速生图生成一张图片
 然后F12审查代码，查找cookie，找到网络 Network---->quickSubmit---->全部---->标头Headers---->请求标头
@@ -111,7 +111,7 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 
 ### 2.自定义prompt提示词前缀 与 自定义基础大模型
 打开routes.py文件
-![](images/model-id.png)
+![](images/model-id.webp)
 
 - 自定义的Lora，可以使用魔搭社区的专业生图。
 
@@ -126,11 +126,11 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 [](#how-to-use)
 
 1. 导航到任何包含您想要使用的图像的网页。右键单击所需的图像。
-![](images/pic.png)
+![](images/pic.webp)
 2. 从上下文菜单中选择“反推生图”。将出现一个模态窗口。它将首先显示生成的提示，然后显示四张新生成的图像。
-![](images/pics.png)
+![](images/pics.webp)
 3. 您可以点击底部的缩略图在主显示区域中查看每个生成的图像。在终端界面上，也会显示进度消息提示。
-![](images/app.png)
+![](images/app.webp)
 
 ### 3.错误提示
 如果有如下提示，可能是反推接口延时或者超时。如果终端数据响应消息在显示，可以到
@@ -138,4 +138,4 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 https://modelscope.cn/aigc/gallery
 [魔搭资源库](https://modelscope.cn/aigc/gallery)
 
-![](images/error.png)
+![](images/error.webp)
