@@ -2,19 +2,28 @@
 
 [](#ai-image-reverse--generation-tool)
 
-感谢guahunyo与T8的开源，我在他们的代码基础上做了一些修改，使用了Qwen2.5-VL反推模型与自己训练的Lora模型。并将详细的修改调整使用教程写了出来。
+感谢guahunyo与T8的开源，我在他们的代码基础上做了一些修改，使用了Qwen3-VL-235B-A22B-Instruct反推模型与自定义在魔搭上训练的Lora模型。
+
+
 
 牛肉拉面不加香菜: [guahunyo](https://github.com/guahunyo)
 
 T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 
+我并将详细的修改调整使用教程写了出来。Lora模型可以在 https://modelscope.cn/aigc/models [魔搭AIGC专区](https://modelscope.cn/aigc/models)网页中查找。
+
 ## 概述
 
 [](#overview)
 
-该项目是一个强大的工具，可与您的浏览器集成，提供独特的图像分析和生成工作流程。它允许用户右键单击网页上的任何图像，使用Qwen2.5-VL-72B-Instruct反推自动生成该图像的描述性提示，然后使用该提示创建一组新的 AI 生成图像。
+该项目是一个强大的工具，可与您的浏览器集成，提供独特的图像分析和生成工作流程。它允许用户右键单击网页上的任何图像，使用Qwen3-VL-235B-A22B-Instruct反推自动生成该图像的描述性提示，然后使用该提示创建一组新的 AI 生成图像。
 
 整个过程直接显示在当前页面上一个干净、用户友好的模式窗口中，无需离开即可提供无缝体验。
+
+- **chrome插件**
+extension 是缩略图原始版。
+extension_popup 是图片大图显示弹窗版。
+
 
 ## 特征
 
@@ -37,7 +46,7 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 - **后端** ：Python、Flask
 - **前端** ：JavaScript（用于浏览器扩展）、HTML、CSS
 - **核心逻辑** ：
-  - `image_analyzer.py` ：使用Qwen2.5-VL处理将图像反转为文本提示的逻辑。
+  - `image_analyzer.py` ：使用Qwen3-VL-235B-A22B-Instruct处理将图像反转为文本提示的逻辑。
   - `routes.py` ：定义图像分析和生成的 API 端点。
   - `config.py`：将config.py.template重名为config.py，然后输入key与cookie。
 - **浏览器扩展** ：使用标准 WebExtension API（ `manifest.json` 、 `background.js` 、 `content.js` ）构建。
