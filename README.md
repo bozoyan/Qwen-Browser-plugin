@@ -22,8 +22,8 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 整个过程直接显示在当前页面上一个干净、用户友好的模式窗口中，无需离开即可提供无缝体验。
 
 - **chrome插件**
-extension 是缩略图原始版。
-extension_popup 是图片大图显示弹窗版。
+- extension 是缩略图原始版。
+- extension_popup 是图片大图显示弹窗版。
 
 
 ## 特征
@@ -58,17 +58,17 @@ extension_popup 是图片大图显示弹窗版。
 
 ```
 /
-├── extension/            # Browser extension source code
+├── extension/            # 浏览器扩展源代码
 │   ├── scripts/
-│   │   ├── background.js # Handles context menu creation
-│   │   └── content.js    # Injects the modal and handles API calls
-│   └── manifest.json     # Extension configuration
-├── static/               # Static assets for the web interface
-├── templates/            # HTML templates for the web interface
-├── image_analyzer.py     # Core logic for image-to-prompt
-├── routes.py             # Flask API route definitions
-├── web_app.py            # Main Flask application entry point
-└── requirements.txt      # Python dependencies
+│   │   ├── background.js # 处理上下文菜单创建
+│   │   └── content.js    # 注入模式并处理 API 调用
+│   └── manifest.json     # 扩展配置
+├── static/               # Web 界面的静态资产
+├── templates/            # Web 界面的 HTML 模板
+├── image_analyzer.py     # 图像到提示的核心逻辑
+├── routes.py             # Flask API 路由定义
+├── web_app.py            # 主烧瓶应用程序入口点
+└── requirements.txt      # Python 依赖项
 ```
 
 ## 设置和安装
