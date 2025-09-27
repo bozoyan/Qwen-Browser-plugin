@@ -5,3 +5,4 @@ requests>=2.25.1
 openai>=1.0.0
 Werkzeug>=2.0.0
 Flask-Cors>=3.0.0
+pillow

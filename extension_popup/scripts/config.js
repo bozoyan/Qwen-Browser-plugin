@@ -43,10 +43,10 @@ const CONFIG = {
     // 文件上传配置
     UPLOAD: {
         // 允许的文件类型
-        ALLOWED_TYPES: ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp'],
+        ALLOWED_TYPES: ['image/webp','image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp'],
         
         // 允许的文件扩展名
-        ALLOWED_EXTENSIONS: ['.png', '.jpg', '.jpeg', '.gif', '.bmp'],
+        ALLOWED_EXTENSIONS: ['.webp','.png', '.jpg', '.jpeg', '.gif', '.bmp'],
         
         // 最大文件大小 (字节)
         MAX_SIZE: 16 * 1024 * 1024, // 16MB

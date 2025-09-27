@@ -1,23 +1,40 @@
 import base64
 import logging
 import re
+# from io import BytesIO  # 新增：用于内存中处理图片
+# from PIL import Image  # 新增：用于图片格式转换
 from openai import OpenAI
 
 def analyze_image(image_path, api_key):
-    """调用Qwen2.5-VL API分析图片"""
+    """调用Qwen3-VL API分析图片"""
     try:
-
+        # 读取并转换图片为WebP格式（关键修改）
+        # try:
+        #     with Image.open(image_path) as img:
+        #         # 创建内存缓冲区存储转换后的WebP数据
+        #         webp_buffer = BytesIO()
+        #         # 转换为WebP格式（quality可调整，1-100）
+        #         img.save(webp_buffer, format="WebP", quality=90)
+        #         # 移动到缓冲区起始位置，读取二进制数据
+        #         webp_buffer.seek(0)
+        #         # 编码为base64
+        #         base64_image = base64.b64encode(webp_buffer.read()).decode("utf-8")
+        # except Exception as e:
+        #     error_msg = f"图片格式转换失败（可能原图损坏或格式不支持）: {str(e)}"
+        #     logging.error(error_msg)
+        #     return False, error_msg
         
         # 读取并编码图片
         with open(image_path, "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode("utf-8")
         
-        # 使用Qwen2.5-VL反推
+        # 使用Qwen3-VL反推
         try:
             # 初始化OpenAI客户端
             client = OpenAI(
                 base_url='https://api-inference.modelscope.cn/v1',
-                api_key=api_key,
+                # api_key= api_key,
+                api_key= "ms-" + api_key,   #老版本的 KEY
             )
             
             # 构建提示词，包含用户要求的所有反推要点
@@ -40,8 +57,8 @@ def analyze_image(image_path, api_key):
             
             # 发送请求
             response = client.chat.completions.create(
-                # model='stepfun-ai/Step3',  # ModelScope Model-Id
-                model='Qwen/Qwen3-VL-235B-A22B-Instruct',  # ModelScope Model-Id
+                model='Qwen/Qwen2.5-VL-72B-Instruct',  # ModelScope Model-Id
+                # model='Qwen/Qwen3-VL-235B-A22B-Instruct',  # ModelScope Model-Id
                 messages=[{
                     'role': 'user',
                     'content': [{
@@ -50,9 +67,8 @@ def analyze_image(image_path, api_key):
                     }, {
                         'type': 'image_url',
                         'image_url': {
-                            'url': f"data:image/webp;base64,{base64_image}",
-                            # 'url': f"data:image/jpeg;base64,{base64_image}",
-                            # 'url': f"data:image/png;base64,{base64_image}",
+                            'url': f"data:image/png;base64,{base64_image}",
+                            # 'url': f"data:image/webp;base64,{base64_image}",
                         },
                     }],
                 }],
