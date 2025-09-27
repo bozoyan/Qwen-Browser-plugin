@@ -10,6 +10,8 @@ cs.py
 # 确保 uploads 文件夹本身不被忽略
 !/backup/
 
+extension_yun/
+
 .DS_Store
 config.py
 */.DS_Store
