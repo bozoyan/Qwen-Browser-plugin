@@ -171,9 +171,9 @@ def generate_image_proxy():
             },
             'basicDiffusionArgs': {
                 'sampler': "Euler",
-                'guidanceScale': 3,
+                'guidanceScale': 4,
                 'seed': -1,
-                'numInferenceSteps': 60,
+                'numInferenceSteps': 50,
                 'numImagesPerPrompt': 4,
                 'width': int(width),
                 'height': int(height)
