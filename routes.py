@@ -170,7 +170,7 @@ def generate_image_proxy():
                 'negativePrompt': ""
             },
             'basicDiffusionArgs': {
-                'sampler': "Euler",
+                'sampler': "Euler simple",
                 'guidanceScale': 4,
                 'seed': -1,
                 'numInferenceSteps': 50,
