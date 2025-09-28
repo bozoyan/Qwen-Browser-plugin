@@ -1,0 +1,35 @@
+{
+  "modelArgs": {
+    "checkpointModelVersionId": 275167,
+    "loraArgs": [
+      {
+        "modelVersionId": 310150,
+        "scale": 1
+      }
+    ],
+    "checkpointShowInfo": "Qwen Image_v1.safetensors"
+  },
+  "promptArgs": {
+    "prompt": "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,big boobs,妃妃,这是一幅专业人像摄影作品，拍摄于室内卧室场景中。自然光线从窗户斜射进来，营造出柔和而明亮的氛围。画面采用近景构图，镜头聚焦于一位亚洲女性，她拥有黑色长发，发丝顺滑垂落肩头。她穿着一件黄色蕾丝上衣，蕾丝纹理细腻，袖子紧贴手臂，露出部分肩膀和锁骨。她的皮肤白皙，五官精致，眼神直视镜头，表情平静而自信。 女性的姿态是侧卧在床上，身体微微前倾，右手支撑在床面，左手自然放在身侧。她的姿势优雅，腿部线条流畅，脚上穿着红色高跟鞋，与整体色调形成对比。背景是简洁的卧室环境，白色的床单和枕头显得干净整洁，窗外的光线透过窗帘洒入室内，增加了画面的层次感。 整体画面风格偏向真实人像摄影，细节处理细腻，光影效果自然。摄影师使用了中画幅相机，捕捉到人物肌肤的质感、衣物的纹理以及背景的细节。35mm广角镜头的运用使得画面构图更加饱满，人物与环境和谐统一。整个画面在光线的映衬下，呈现出一种宁静而优雅的氛围。,feifei",
+    "negativePrompt": ""
+  },
+  "basicDiffusionArgs": {
+    "sampler": "Euler",
+    "guidanceScale": 4,
+    "seed": -1,
+    "numInferenceSteps": 30,
+    "numImagesPerPrompt": 4,
+    "width": 1104,
+    "height": 1472,
+    "advanced": false
+  },
+  "adetailerArgsMap": {},
+  "hiresFixFrontArgs": {
+    "modelName": "R-ESRGAN 4x+",
+    "scale": 2
+  },
+  "addWaterMark": false,
+  "advanced": false,
+  "predictType": "TXT_2_IMG",
+  "controlNetFullArgs": []
+}

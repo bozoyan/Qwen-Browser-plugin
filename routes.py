@@ -170,10 +170,10 @@ def generate_image_proxy():
                 'negativePrompt': ""
             },
             'basicDiffusionArgs': {
-                'sampler': "Euler simple",
+                'sampler': "Euler",
                 'guidanceScale': 4,
                 'seed': -1,
-                'numInferenceSteps': 50,
+                'numInferenceSteps': 60,
                 'numImagesPerPrompt': 4,
                 'width': int(width),
                 'height': int(height)
@@ -181,8 +181,12 @@ def generate_image_proxy():
             'advanced': False,
             'addWaterMark': False,
             'adetailerArgsMap': {},
-            'controlNetFullArgs': [],
-            'hiresFixFrontArgs': None
+            'hiresFixFrontArgs': {
+                # 'modelName': "R-ESRGAN 4x+",
+                'modelName': "Nomos 8k SCHATL 4x",
+                "scale": 4
+            },
+            'controlNetFullArgs': []
         }
         
         # 提取CSRF Token - 增强版本，支持更多格式
