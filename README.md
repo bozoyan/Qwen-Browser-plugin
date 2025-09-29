@@ -122,6 +122,13 @@ T8star-Aix: [T8的源代码](https://github.com/T8mars/Qwen-Browser-plugin)
 
 ![](images/lora-2.webp)
 
+### 新增功能
+- 加入了放大模型，可以X4放大
+可以参考以下模型名：
+![](images/放大.webp)
+- Qwen-image的参数参考，20步能出图
+本地部署使用res_2m + sgm_unifrom,需要安装单独采样调度插件。
+![](images/Qwen-image-20步-CFG-2.5.webp)
 
 [](#how-to-use)
 
