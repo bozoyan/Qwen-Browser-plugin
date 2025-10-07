@@ -173,7 +173,7 @@ def generate_image_proxy():
                 'sampler': "Euler",
                 'guidanceScale': 4,
                 'seed': -1,
-                'numInferenceSteps': 60,
+                'numInferenceSteps': 50,
                 'numImagesPerPrompt': 4,
                 'width': int(width),
                 'height': int(height)
