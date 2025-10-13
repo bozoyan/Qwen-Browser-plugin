@@ -5,12 +5,10 @@ __pycache__/
 cs.py
 
 # 忽略 uploads 文件夹中的所有文件
-backup/*.png
-backup/*.webp
-backup/*.jpeg
-
+uploads/*
 # # 确保 uploads 文件夹本身不被忽略
-# !/backup/
+!/uploads/
+
 PIC/
 
 extension_yun/
