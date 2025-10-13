@@ -9,8 +9,9 @@ backup/*.png
 backup/*.webp
 backup/*.jpeg
 
-# 确保 uploads 文件夹本身不被忽略
-!/backup/
+# # 确保 uploads 文件夹本身不被忽略
+# !/backup/
+PIC/
 
 extension_yun/
 
