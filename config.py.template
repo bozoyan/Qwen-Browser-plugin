@@ -1,6 +1,8 @@
 import os
 
 here = os.path.dirname(os.path.abspath(__file__))
+out_pic = "/Volumes/AI/AI/Qwen-Browser-plugin/PIC" #自定义下载远程图片文件夹
+
 
 # 配置上传文件夹和允许的文件扩展名
 UPLOAD_FOLDER = os.path.join(here, 'uploads')
