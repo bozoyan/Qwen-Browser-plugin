@@ -1,13 +1,14 @@
 import re
 import uuid
 import requests
+import json
+import os
+import logging
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, session, current_app
 from werkzeug.utils import secure_filename
-import os
-import logging
 from image_analyzer import analyze_image
-from config import ALLOWED_EXTENSIONS, MODEL_SCOPE_COOKIE, DEFAULT_WIDTH, DEFAULT_HEIGHT, LORA_ARGS
+from config import ALLOWED_EXTENSIONS, MODEL_SCOPE_COOKIE, DEFAULT_WIDTH, DEFAULT_HEIGHT, LORA_ARGS, out_pic
 from utils import allowed_file, extract_csrf_token, generate_trace_id
 
 main_bp = Blueprint('main', __name__)
@@ -99,10 +100,14 @@ def analyze_from_url():
         # 图片下载成功后，调用analyze_image进行分析
         success, result = analyze_image(temp_image_path, api_key=current_app.config['OPENAI_API_KEY'])
         
-        # if success:
-        #     return jsonify({'success': True, 'prompt': result})
-        # else:
-        #     return jsonify({'success': False, 'error': result})
+        # 分析完成后删除临时文件
+        # if os.path.exists(temp_image_path):
+        #     os.remove(temp_image_path)
+
+        if success:
+            return jsonify({'success': True, 'prompt': result})
+        else:
+            return jsonify({'success': False, 'error': result})
 
     except requests.exceptions.RequestException as e:
         return jsonify({'success': False, 'error': f'下载图片失败: {e}'})
@@ -445,6 +450,55 @@ def generate_image_proxy():
                             if images:
                                 print(f"   ✅ 图片生成成功，获取到{len(images)}张图片")
 
+                                # 保存图片到本地并创建JSON文档
+                                try:
+                                    # 创建任务文件夹
+                                    task_folder = os.path.join(out_pic, task_id)
+                                    os.makedirs(task_folder, exist_ok=True)
+
+                                    # 下载图片到本地
+                                    downloaded_images = []
+                                    for img_url in images:
+                                        try:
+                                            # 从URL中提取文件名
+                                            img_filename = os.path.basename(img_url.split('?')[0])
+                                            if not img_filename or '.' not in img_filename:
+                                                img_filename = f"image_{len(downloaded_images) + 1}.jpg"
+
+                                            img_path = os.path.join(task_folder, img_filename)
+
+                                            # 下载图片
+                                            img_response = requests.get(img_url, timeout=30)
+                                            img_response.raise_for_status()
+
+                                            with open(img_path, 'wb') as f:
+                                                f.write(img_response.content)
+
+                                            downloaded_images.append(img_filename)
+                                            print(f"   📥 图片已保存: {img_path}")
+
+                                        except Exception as img_error:
+                                            print(f"   ❌ 下载图片失败 {img_url}: {img_error}")
+                                            logging.error(f"下载图片失败 {img_url}: {img_error}")
+
+                                    # 创建JSON文档
+                                    json_data = {
+                                        'id': task_id,
+                                        'reverse_image': '',  # 这里暂时为空，因为生成图片接口没有原始图片URL
+                                        'url': images
+                                    }
+
+                                    json_file = os.path.join(task_folder, f"{task_id}.json")
+                                    with open(json_file, 'w', encoding='utf-8') as f:
+                                        json.dump(json_data, f, ensure_ascii=False, indent=2)
+
+                                    print(f"   📄 JSON文档已创建: {json_file}")
+                                    logging.info(f"任务 {task_id} 完成，保存了{len(downloaded_images)}张图片和JSON文档")
+
+                                except Exception as save_error:
+                                    print(f"   ❌ 保存图片或创建JSON失败: {save_error}")
+                                    logging.error(f"保存图片或创建JSON失败: {save_error}")
+
                                 return jsonify({'success': True, 'images': images, 'task_id': task_id})
                             else:
                                 print(f"   ❌ 图片生成成功但未找到图片URL")
@@ -567,6 +621,56 @@ def generate_image_proxy():
                                 # 提取图片URL
                                 images = [result['url'] for result in data['results']]
                                 print(f"   ✅ 图片生成成功，获取到{len(images)}张图片")
+
+                                # 保存图片到本地并创建JSON文档
+                                try:
+                                    # 创建任务文件夹
+                                    task_folder = os.path.join(out_pic, task_id)
+                                    os.makedirs(task_folder, exist_ok=True)
+
+                                    # 下载图片到本地
+                                    downloaded_images = []
+                                    for img_url in images:
+                                        try:
+                                            # 从URL中提取文件名
+                                            img_filename = os.path.basename(img_url.split('?')[0])
+                                            if not img_filename or '.' not in img_filename:
+                                                img_filename = f"image_{len(downloaded_images) + 1}.jpg"
+
+                                            img_path = os.path.join(task_folder, img_filename)
+
+                                            # 下载图片
+                                            img_response = requests.get(img_url, timeout=30)
+                                            img_response.raise_for_status()
+
+                                            with open(img_path, 'wb') as f:
+                                                f.write(img_response.content)
+
+                                            downloaded_images.append(img_filename)
+                                            print(f"   📥 图片已保存: {img_path}")
+
+                                        except Exception as img_error:
+                                            print(f"   ❌ 下载图片失败 {img_url}: {img_error}")
+                                            logging.error(f"下载图片失败 {img_url}: {img_error}")
+
+                                    # 创建JSON文档
+                                    json_data = {
+                                        'id': task_id,
+                                        'reverse_image': '',  # 这里暂时为空，因为生成图片接口没有原始图片URL
+                                        'url': images
+                                    }
+
+                                    json_file = os.path.join(task_folder, f"{task_id}.json")
+                                    with open(json_file, 'w', encoding='utf-8') as f:
+                                        json.dump(json_data, f, ensure_ascii=False, indent=2)
+
+                                    print(f"   📄 JSON文档已创建: {json_file}")
+                                    logging.info(f"任务 {task_id} 完成，保存了{len(downloaded_images)}张图片和JSON文档")
+
+                                except Exception as save_error:
+                                    print(f"   ❌ 保存图片或创建JSON失败: {save_error}")
+                                    logging.error(f"保存图片或创建JSON失败: {save_error}")
+
                                 logging.info(f'图片生成成功，获取到{len(images)}张图片')
                                 return jsonify({'success': True, 'images': images, 'task_id': task_id})
                             elif status == 'FAILED':
@@ -608,6 +712,7 @@ def generate_image_proxy():
         return jsonify({'success': False, 'error': f'生成图片时出错: {e}'})
 
 @main_bp.route('/reverse_image', methods=['POST'])
+@main_bp.route('/reverse_image', methods=['POST'])
 def reverse_image():
     data = request.get_json()
     image_url = data.get('image_url')
@@ -641,6 +746,10 @@ def reverse_image():
         # 图片下载成功后，调用analyze_image进行分析
         success, result = analyze_image(temp_image_path, api_key=current_app.config['OPENAI_API_KEY'])
         
+        # 分析完成后删除临时文件
+        # if os.path.exists(temp_image_path):
+        #     os.remove(temp_image_path)
+
         if success:
             return jsonify({'success': True, 'prompt': result})
         else:
