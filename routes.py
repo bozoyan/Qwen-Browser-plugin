@@ -440,9 +440,21 @@ def generate_image_proxy():
                         if task_data and status == 'COMPLETED' and task_data.get('predictResult'):
                             print(f"   🎉 任务完成！获取结果...")
 
-                            # 提取图片URL - 适配不同的响应结构
+                            # 提取图片URL - 适配新的响应结构
                             images = []
-                            if isinstance(task_data['predictResult'], list):
+                            prompt_text = ""
+
+                            # 新结构：从predictResult.images中提取
+                            if isinstance(task_data['predictResult'], dict) and task_data['predictResult'].get('images'):
+                                images_data = task_data['predictResult']['images']
+                                if isinstance(images_data, list):
+                                    images = [item.get('imageUrl') for item in images_data if item and item.get('imageUrl')]
+                                    # 从第一张图片获取prompt（所有图片的prompt应该是相同的）
+                                    if images_data and images_data[0] and images_data[0].get('prompt'):
+                                        prompt_text = images_data[0]['prompt']
+
+                            # 旧的兼容性处理
+                            elif isinstance(task_data['predictResult'], list):
                                 images = [item.get('url') for item in task_data['predictResult'] if item and item.get('url')]
                             elif isinstance(task_data['predictResult'], dict) and task_data['predictResult'].get('results'):
                                 images = [item.get('url') for item in task_data['predictResult']['results'] if item and item.get('url')]
@@ -452,6 +464,9 @@ def generate_image_proxy():
 
                                 # 保存图片到本地并创建JSON文档
                                 try:
+                                    # 获取任务ID和请求ID
+                                    request_id = response_json.get('RequestId') or response_json.get('Data', {}).get('requestId') or ''
+
                                     # 创建任务文件夹
                                     task_folder = os.path.join(out_pic, task_id)
                                     os.makedirs(task_folder, exist_ok=True)
@@ -484,6 +499,8 @@ def generate_image_proxy():
                                     # 创建JSON文档
                                     json_data = {
                                         'id': task_id,
+                                        'requestId': request_id,
+                                        'prompt': prompt_text,  # 添加prompt字段
                                         'reverse_image': '',  # 这里暂时为空，因为生成图片接口没有原始图片URL
                                         'url': images
                                     }
@@ -526,34 +543,29 @@ def generate_image_proxy():
                             logging.info(f'任务{status}中: {queue_info}')
                             continue
                         elif task_data and status in ('SUCCESS', 'SUCCEED'):
-                            # 处理成功状态 - 增强版本，支持多种URL提取方式
+                            # 处理成功状态 - 适配新的API响应结构
                             images = []
+                            prompt_text = ""
                             print(f"   🎉 任务成功状态，开始提取图片URL...")
                             logging.debug(f'任务成功状态，task_data结构: {str(task_data)[:500]}...')
                             
-                            # 尝试从不同位置提取图片URL，增强兼容性
                             try:
-                                # 从Data.data.predictResult中提取URL（根据日志中的实际响应结构）
-                                if 'Data' in response_json and isinstance(response_json['Data'], dict):
-                                    data_obj = response_json['Data']
-                                    if 'data' in data_obj and isinstance(data_obj['data'], dict):
-                                        inner_data = data_obj['data']
-                                        if 'predictResult' in inner_data and isinstance(inner_data['predictResult'], dict):
-                                            predict_result = inner_data['predictResult']
-                                            if predict_result.get('imageUrl'):
-                                                images = [predict_result['imageUrl']]
-                                                print(f"   📍 从Data.data.predictResult.imageUrl提取图片URL")
-                                            # 从predictResult中直接提取image_list字段
-                                            elif predict_result.get('image_list'):
-                                                images = predict_result['image_list']
-                                                print(f"   📍 从Data.data.predictResult.image_list提取图片URL列表")
+                                # 新结构：从predictResult.images中提取
+                                if isinstance(task_data.get('predictResult'), dict) and task_data['predictResult'].get('images'):
+                                    images_data = task_data['predictResult']['images']
+                                    if isinstance(images_data, list):
+                                        images = [item.get('imageUrl') for item in images_data if item and item.get('imageUrl')]
+                                        # 从第一张图片获取prompt（所有图片的prompt应该是相同的）
+                                        if images_data and images_data[0] and images_data[0].get('prompt'):
+                                            prompt_text = images_data[0]['prompt']
+                                    print(f"   📍 从task_data.predictResult.images提取到{len(images)}张图片")
                                 
                                 # 备选方案1：从task_data.results中提取
                                 if not images and task_data.get('results'):
                                     images = [item.get('url') for item in task_data['results'] if item and item.get('url')]
                                     print(f"   📍 从task_data.results提取到{len(images)}张图片")
                                 
-                                # 备选方案2：从task_data.predictResult中提取
+                                # 备选方案2：从task_data.predictResult中提取（旧兼容）
                                 if not images and task_data.get('predictResult'):
                                     predict_result = task_data['predictResult']
                                     if isinstance(predict_result, list):
@@ -606,24 +618,12 @@ def generate_image_proxy():
                             if images:
                                 print(f"   ✅ 图片生成成功，获取到{len(images)}张图片")
                                 logging.info(f'图片生成成功，获取到{len(images)}张图片')
-                                return jsonify({'success': True, 'images': images, 'task_id': task_id})
-                            else:
-                                print(f"   ❌ 图片生成成功但未找到图片URL")
-                                logging.error('图片生成成功但未找到图片URL')
-                                logging.debug(f'最终response_json结构: {str(response_json)[:500]}...')
-                                return jsonify({'success': False, 'error': '图片生成成功但未找到图片URL'})
-                        elif response_json.get('code') == 0 and response_json.get('data'):
-                            # 尝试兼容旧结构
-                            data = response_json['data']
-                            status = data.get('status', '')
-                            
-                            if status == 'SUCCESS':
-                                # 提取图片URL
-                                images = [result['url'] for result in data['results']]
-                                print(f"   ✅ 图片生成成功，获取到{len(images)}张图片")
 
                                 # 保存图片到本地并创建JSON文档
                                 try:
+                                    # 获取任务ID和请求ID
+                                    request_id = response_json.get('RequestId') or response_json.get('Data', {}).get('requestId') or ''
+
                                     # 创建任务文件夹
                                     task_folder = os.path.join(out_pic, task_id)
                                     os.makedirs(task_folder, exist_ok=True)
@@ -656,6 +656,79 @@ def generate_image_proxy():
                                     # 创建JSON文档
                                     json_data = {
                                         'id': task_id,
+                                        'requestId': request_id,
+                                        'prompt': prompt_text,  # 添加prompt字段
+                                        'reverse_image': '',  # 这里暂时为空，因为生成图片接口没有原始图片URL
+                                        'url': images
+                                    }
+
+                                    json_file = os.path.join(task_folder, f"{task_id}.json")
+                                    with open(json_file, 'w', encoding='utf-8') as f:
+                                        json.dump(json_data, f, ensure_ascii=False, indent=2)
+
+                                    print(f"   📄 JSON文档已创建: {json_file}")
+                                    logging.info(f"任务 {task_id} 完成，保存了{len(downloaded_images)}张图片和JSON文档")
+
+                                except Exception as save_error:
+                                    print(f"   ❌ 保存图片或创建JSON失败: {save_error}")
+                                    logging.error(f"保存图片或创建JSON失败: {save_error}")
+
+                                logging.info(f'图片生成成功，获取到{len(images)}张图片')
+                                return jsonify({'success': True, 'images': images, 'task_id': task_id})
+                            else:
+                                print(f"   ❌ 图片生成成功但未找到图片URL")
+                                logging.error('图片生成成功但未找到图片URL')
+                                logging.debug(f'最终response_json结构: {str(response_json)[:500]}...')
+                                return jsonify({'success': False, 'error': '图片生成成功但未找到图片URL'})
+                        elif response_json.get('code') == 0 and response_json.get('data'):
+                            # 尝试兼容旧结构
+                            data = response_json['data']
+                            status = data.get('status', '')
+                            
+                            if status == 'SUCCESS':
+                                # 提取图片URL
+                                images = [result['url'] for result in data['results']]
+                                print(f"   ✅ 图片生成成功，获取到{len(images)}张图片")
+
+                                # 保存图片到本地并创建JSON文档
+                                try:
+                                    # 获取任务ID和请求ID
+                                    request_id = response_json.get('RequestId') or response_json.get('Data', {}).get('requestId') or ''
+
+                                    # 创建任务文件夹
+                                    task_folder = os.path.join(out_pic, task_id)
+                                    os.makedirs(task_folder, exist_ok=True)
+
+                                    # 下载图片到本地
+                                    downloaded_images = []
+                                    for img_url in images:
+                                        try:
+                                            # 从URL中提取文件名
+                                            img_filename = os.path.basename(img_url.split('?')[0])
+                                            if not img_filename or '.' not in img_filename:
+                                                img_filename = f"image_{len(downloaded_images) + 1}.jpg"
+
+                                            img_path = os.path.join(task_folder, img_filename)
+
+                                            # 下载图片
+                                            img_response = requests.get(img_url, timeout=30)
+                                            img_response.raise_for_status()
+
+                                            with open(img_path, 'wb') as f:
+                                                f.write(img_response.content)
+
+                                            downloaded_images.append(img_filename)
+                                            print(f"   📥 图片已保存: {img_path}")
+
+                                        except Exception as img_error:
+                                            print(f"   ❌ 下载图片失败 {img_url}: {img_error}")
+                                            logging.error(f"下载图片失败 {img_url}: {img_error}")
+
+                                    # 创建JSON文档
+                                    json_data = {
+                                        'id': task_id,
+                                        'requestId': request_id,
+                                        'prompt': '',  # 旧结构中没有prompt信息
                                         'reverse_image': '',  # 这里暂时为空，因为生成图片接口没有原始图片URL
                                         'url': images
                                     }
@@ -712,7 +785,6 @@ def generate_image_proxy():
         return jsonify({'success': False, 'error': f'生成图片时出错: {e}'})
 
 @main_bp.route('/reverse_image', methods=['POST'])
-@main_bp.route('/reverse_image', methods=['POST'])
 def reverse_image():
     data = request.get_json()
     image_url = data.get('image_url')
@@ -720,6 +792,7 @@ def reverse_image():
     if not image_url:
         return jsonify({'success': False, 'message': '缺少图片URL！'})
 
+    temp_image_path = ''
     try:
         # 发送GET请求下载图片
         response = requests.get(image_url, stream=True)
@@ -746,13 +819,20 @@ def reverse_image():
         # 图片下载成功后，调用analyze_image进行分析
         success, result = analyze_image(temp_image_path, api_key=current_app.config['OPENAI_API_KEY'])
         
-        # 分析完成后删除临时文件
-        # if os.path.exists(temp_image_path):
-        #     os.remove(temp_image_path)
-
+        # 分析完成后保留临时文件，用于reverse_image字段
         if success:
-            return jsonify({'success': True, 'prompt': result})
+            return jsonify({
+                'success': True,
+                'prompt': result,
+                'temp_image_path': temp_image_path  # 返回临时文件路径
+            })
         else:
+            # 分析失败则删除临时文件
+            if os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
             return jsonify({'success': False, 'error': result})
     except Exception as e:
+        # 发生异常则删除临时文件
+        if temp_image_path and os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
         return jsonify({'success': False, 'error': str(e)})
