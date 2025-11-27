@@ -201,7 +201,9 @@ class ModelScopeImageNode:
                 
             logging.info(f"[ModelScope] 任务提交成功，任务ID: {task_id}")
             
-            # 轮询任务状态
+            # 轮询任务状态，先等待几秒让任务开始处理
+            logging.info("[ModelScope] 等待任务开始处理...")
+            time.sleep(5)  # 初始等待5秒
             urls, status = self.poll_task_status(task_id, headers)
             
             if not urls:
@@ -258,7 +260,7 @@ class ModelScopeImageNode:
             empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
             return ("", empty_tensor, f"生成图像失败: {e}")
             
-    def poll_task_status(self, task_id, headers, max_wait_time=300):
+    def poll_task_status(self, task_id, headers, max_wait_time=600):
         """
         轮询任务状态
         Args:
@@ -304,24 +306,55 @@ class ModelScopeImageNode:
                     return ([], "无法从轮询API响应中获取任务数据")
                 status = task_data.get("status", "")
                 
-                if status == "COMPLETED":
+                if status == "COMPLETED" or status == "SUCCEED":
                     # 尝试从不同位置获取图像
                     images = []
                     
-                    # 尝试从predictResult获取
-                    if "predictResult" in task_data:
-                        images = [item.get("url") for item in task_data.get("predictResult", []) if item and item.get("url")]
+                    # 尝试从predictResult.images获取
+                    if "predictResult" in task_data and isinstance(task_data["predictResult"], dict):
+                        predict_result = task_data["predictResult"]
+                        if "images" in predict_result and isinstance(predict_result["images"], list):
+                            # 从每个图像对象中提取imageUrl字段
+                            for img_obj in predict_result["images"]:
+                                if isinstance(img_obj, dict) and "imageUrl" in img_obj:
+                                    images.append(img_obj["imageUrl"])
                     
-                    # 尝试从其他可能的位置获取
-                    elif "images" in task_data:
-                        images = [item.get("url") if isinstance(item, dict) else item for item in task_data.get("images", []) if item]
+                    # 尝试从predictResult获取（旧格式）
+                    elif "predictResult" in task_data and isinstance(task_data["predictResult"], list):
+                        images = [item.get("url") for item in task_data.get("predictResult", []) if item and isinstance(item, dict) and item.get("url")]
+                    
+                    # 尝试从images获取
+                    elif "images" in task_data and isinstance(task_data["images"], list):
+                        for img_obj in task_data["images"]:
+                            if isinstance(img_obj, dict) and "imageUrl" in img_obj:
+                                images.append(img_obj["imageUrl"])
+                            elif isinstance(img_obj, str):
+                                images.append(img_obj)
+                            elif isinstance(img_obj, dict) and "url" in img_obj:
+                                images.append(img_obj["url"])
+                    
+                    # 尝试从result中获取
+                    elif "result" in task_data and isinstance(task_data["result"], dict):
+                        result_data = task_data["result"]
+                        if "images" in result_data and isinstance(result_data["images"], list):
+                            for img_obj in result_data["images"]:
+                                if isinstance(img_obj, dict) and "imageUrl" in img_obj:
+                                    images.append(img_obj["imageUrl"])
+                                elif isinstance(img_obj, str):
+                                    images.append(img_obj)
+                                elif isinstance(img_obj, dict) and "url" in img_obj:
+                                    images.append(img_obj["url"])
+                        elif "image_urls" in result_data:
+                            images = result_data.get("image_urls", [])
                     
                     # 添加调试信息
-                    logging.info(f"[ModelScope] 任务完成，生成了{len(images)}张图像")
+                    logging.info(f"[ModelScope] 任务完成，状态: {status}，生成了{len(images)}张图像")
                     if not images:
                         logging.warning(f"[ModelScope] 无法从响应中提取图像URL，任务数据: {task_data}")
+                    else:
+                        logging.info(f"[ModelScope] 成功提取图像URL: {images}")
                     
-                    return (images, "任务完成")
+                    return (images, f"任务完成({status})")
                     
                 elif status == "FAILED":
                     error_msg = task_data.get("errorMsg", "未知错误")
@@ -335,15 +368,25 @@ class ModelScopeImageNode:
                     
                     logging.info(f"[ModelScope] 任务状态: {status}, 进度: {percent}%, 详情: {detail}")
                     
+                    # 智能轮询间隔：排队时使用较长间隔，处理时使用较短间隔
+                    if status == "QUEUING" or "排队" in detail:
+                        # 排队时，间隔15秒
+                        time.sleep(15)
+                    elif status == "PROCESSING":
+                        # 处理中，间隔8秒
+                        time.sleep(8)
+                    else:
+                        # 其他状态，间隔10秒
+                        time.sleep(10)
+                        
                 else:
                     logging.warning(f"[ModelScope] 未知任务状态: {status}")
-                    
-                # 等待5秒后再次查询
-                time.sleep(5)
+                    # 未知状态，使用标准间隔
+                    time.sleep(10)
                 
             except requests.exceptions.RequestException as e:
                 logging.error(f"[ModelScope] 轮询请求失败: {e}")
-                time.sleep(5)
+                time.sleep(10)
                 
         # 如果超时，返回空图像列表
         logging.warning(f"[ModelScope] 任务轮询超时，可能需要更长时间")

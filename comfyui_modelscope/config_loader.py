@@ -88,7 +88,11 @@ class ConfigLoader:
         try:
             if os.path.exists(file_path):
                 with open(file_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    content = json.load(f)
+                    # 记录成功加载的文件
+                    file_name = os.path.basename(file_path)
+                    logging.info(f"[ModelScope] 配置文件加载成功: {file_path}")
+                    return content
             else:
                 logging.warning(f"[ModelScope] 文件不存在: {file_path}")
                 return default_value if default_value is not None else []
