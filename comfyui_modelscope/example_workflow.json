@@ -1,0 +1,187 @@
+{
+  "3": {
+    "inputs": {
+      "seed": 12345,
+      "steps": 20,
+      "cfg": 8,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "4": {
+    "inputs": {
+      "ckpt_name": "v1-5-pruned-emaonly.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "a beautiful landscape with mountains and a lake",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "blurry, low quality, distorted",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "10": {
+    "inputs": {
+      "prompt": "a beautiful landscape with mountains and a lake",
+      "width": 928,
+      "height": 1664,
+      "num_images": 4,
+      "enable_hires": true,
+      "api_key": "",
+      "cookie": "\u5728\u8fd9\u91cc\u586b\u5199\u60a8\u7684ModelScope Cookie",
+      "checkpoint": [
+        "11",
+        0
+      ],
+      "lora1": [
+        "12",
+        0
+      ],
+      "lora2": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "ModelScopeImageNode",
+    "_meta": {
+      "title": "ModelScope \u56fe\u50cf\u751f\u6210"
+    }
+  },
+  "11": {
+    "inputs": {
+      "checkpoint": "Qwen_Image_v1.safetensors (ID: 275167)",
+      "custom_id": "",
+      "custom_name": "",
+      "use_custom": false
+    },
+    "class_type": "CheckpointNode",
+    "_meta": {
+      "title": "ModelScope Checkpoint"
+    }
+  },
+  "12": {
+    "inputs": {
+      "lora": "FEIFEI (ID: 310150, Scale: 1)",
+      "custom_id": "",
+      "custom_name": "",
+      "custom_scale": 1.0,
+      "use_custom": false,
+      "scale": 1.2
+    },
+    "class_type": "LoraNode",
+    "_meta": {
+      "title": "ModelScope LoRA"
+    }
+  },
+  "13": {
+    "inputs": {
+      "lora": "GUA_V2 (ID: 334516, Scale: 1)",
+      "custom_id": "",
+      "custom_name": "",
+      "custom_scale": 1.0,
+      "use_custom": false,
+      "scale": 0.8
+    },
+    "class_type": "LoraNode",
+    "_meta": {
+      "title": "ModelScope LoRA"
+    }
+  },
+  "14": {
+    "inputs": {
+      "filename_prefix": "ModelScope",
+      "images": [
+        "10",
+        1
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

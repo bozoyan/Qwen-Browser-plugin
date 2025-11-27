@@ -1,0 +1,22 @@
+[
+    {
+        "checkpointModelVersionId": 275167,
+        "checkpointShowInfo": "Qwen_Image_v1.safetensors"
+    },
+    {
+        "checkpointModelVersionId": 332699,
+        "checkpointShowInfo": "GUA_V1.safetensors"
+    },
+    {
+        "checkpointModelVersionId": 334516,
+        "checkpointShowInfo": "GUA_V2.safetensors"
+    },
+    {
+        "checkpointModelVersionId": 346999,
+        "checkpointShowInfo": "GUA_V8.safetensors"
+    },
+    {
+        "checkpointModelVersionId": 365553,
+        "checkpointShowInfo": "GUA_V9.safetensors"
+    }
+]

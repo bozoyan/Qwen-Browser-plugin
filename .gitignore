@@ -8,7 +8,7 @@ cs.py
 uploads/*
 # # 确保 uploads 文件夹本身不被忽略
 !/uploads/
-
+comfyui_modelscope/config.json
 PIC/
 
 extension_yun/
