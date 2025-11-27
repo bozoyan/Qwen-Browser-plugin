@@ -215,13 +215,17 @@ class ModelScopeImageNode:
             images = []
             image_urls = []
             
-            for url in urls:
+            logging.info(f"[ModelScope] 开始下载{len(urls)}张图像")
+            
+            for i, url in enumerate(urls):
                 try:
+                    logging.info(f"[ModelScope] 正在下载第{i+1}张图像: {url[:50]}...")
                     img_response = requests.get(url, timeout=30)
                     img_response.raise_for_status()
                     
                     # 将图像转换为PIL对象
                     img = Image.open(io.BytesIO(img_response.content))
+                    logging.info(f"[ModelScope] 图像{i+1}下载成功，格式: {img.format}, 尺寸: {img.size}")
                     
                     # 转换为numpy数组
                     img_array = np.array(img).astype(np.float32) / 255.0
@@ -232,8 +236,10 @@ class ModelScopeImageNode:
                     images.append(img_tensor)
                     image_urls.append(url)
                     
+                    logging.info(f"[ModelScope] 图像{i+1}转换成功，张量形状: {img_tensor.shape}")
+                    
                 except Exception as e:
-                    logging.error(f"[ModelScope] 下载或处理图像失败: {e}")
+                    logging.error(f"[ModelScope] 下载或处理第{i+1}张图像失败: {e}, URL: {url[:50]}...")
                     continue
                     
             if not images:
@@ -242,12 +248,22 @@ class ModelScopeImageNode:
                 return ("", empty_tensor, "所有图像下载或处理失败")
                 
             # 合并所有图像
-            combined_images = torch.cat(images, dim=0)
-            
-            log_message = f"成功生成{len(combined_images)}张图像，尺寸: {width}x{height}"
-            logging.info(f"[ModelScope] {log_message}")
-            
-            return ("\n".join(image_urls), combined_images, log_message)
+            try:
+                combined_images = torch.cat(images, dim=0)
+                log_message = f"成功生成{len(combined_images)}张图像，原始尺寸: {width}x{height}"
+                logging.info(f"[ModelScope] {log_message}")
+                
+                # 检查是否有图像下载失败
+                if len(images) < len(urls):
+                    failed_count = len(urls) - len(images)
+                    log_message += f" (有{failed_count}张图像下载或处理失败)"
+                    logging.warning(f"[ModelScope] 有{failed_count}张图像下载或处理失败")
+                
+                return ("\n".join(image_urls), combined_images, log_message)
+            except Exception as e:
+                logging.error(f"[ModelScope] 合并图像张量失败: {e}")
+                empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+                return ("\n".join(image_urls), empty_tensor, f"合并图像张量失败: {e}")
             
         except requests.exceptions.RequestException as e:
             logging.error(f"[ModelScope] 请求失败: {e}")
