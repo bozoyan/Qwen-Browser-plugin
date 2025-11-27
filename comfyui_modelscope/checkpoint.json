@@ -2,26 +2,15 @@
     {
         "CheckpointName": "Qwen_Image_v1",
         "checkpointModelVersionId": 275167,
-        "checkpointShowInfo": "Qwen_Image_v1.safetensors"
+        "checkpointShowInfo": "Qwen_Image_v1.safetensors",
+        "numInferenceSteps": 50,
+        "guidanceScale": 4
     },
     {
-        "CheckpointName": "GUA_V1",
-        "checkpointModelVersionId": 332699,
-        "checkpointShowInfo": "GUA_V1.safetensors"
-    },
-    {
-        "CheckpointName": "GUA_V2",
-        "checkpointModelVersionId": 334516,
-        "checkpointShowInfo": "GUA_V2.safetensors"
-    },
-    {
-        "CheckpointName": "GUA_V8",
-        "checkpointModelVersionId": 346999,
-        "checkpointShowInfo": "GUA_V8.safetensors"
-    },
-    {
-        "CheckpointName": "GUA_V9",
-        "checkpointModelVersionId": 365553,
-        "checkpointShowInfo": "GUA_V9.safetensors"
+        "CheckpointName": "造相-Z-Image-Turbo_master",
+        "checkpointModelVersionId": 469191,
+        "checkpointShowInfo": "造相-Z-Image-Turbo_master.safetensors",
+        "numInferenceSteps": 9,
+        "guidanceScale": 2.5
     }
 ]

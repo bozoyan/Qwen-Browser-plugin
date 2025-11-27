@@ -33,10 +33,34 @@ class ConfigLoader:
                     return config
             else:
                 logging.warning(f"[ModelScope] 配置文件不存在: {self.config_file}")
-                return self.create_default_config()
+                # 尝试从模板文件创建
+                return self.create_from_template()
         except Exception as e:
             logging.error(f"[ModelScope] 加载配置文件失败: {e}")
             return self.get_default_config()
+    
+    def create_from_template(self):
+        """从模板文件创建配置文件"""
+        plugin_dir = os.path.dirname(os.path.realpath(__file__))
+        template_file = os.path.join(plugin_dir, "config.template.json")
+        
+        if os.path.exists(template_file):
+            try:
+                with open(template_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # 保存为新配置文件
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4, ensure_ascii=False)
+                
+                logging.info(f"[ModelScope] 已从模板创建配置文件: {self.config_file}")
+                return config
+            except Exception as e:
+                logging.error(f"[ModelScope] 从模板创建配置文件失败: {e}")
+                return self.create_default_config()
+        else:
+            logging.warning(f"[ModelScope] 模板文件不存在: {template_file}")
+            return self.create_default_config()
             
     def save_config(self):
         """保存配置文件"""

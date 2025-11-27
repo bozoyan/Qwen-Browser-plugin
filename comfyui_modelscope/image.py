@@ -35,8 +35,6 @@ class ModelScopeImageNode:
                 "height": ("INT", {"default": 1664, "min": 256, "max": 2048, "step": 64}),
                 "num_images": ("INT", {"default": 4, "min": 1, "max": 4, "step": 1}),
                 "enable_hires": ("BOOLEAN", {"default": True}),
-                
-                "cookie": ("STRING", {"multiline": True, "default": ""}),
             },
             "optional": {
                 "checkpoint": ("CHECKPOINT",),
@@ -55,7 +53,7 @@ class ModelScopeImageNode:
     def __init__(self):
         self.config_loader = ConfigLoader()
         
-    def generate_images(self, prompt, width, height, num_images, enable_hires, cookie, 
+    def generate_images(self, prompt, width, height, num_images, enable_hires, 
                        checkpoint=None, lora1=None, lora2=None, lora3=None, lora4=None):
         """
         生成图像
@@ -65,7 +63,6 @@ class ModelScopeImageNode:
             height: 图像高度
             num_images: 生成图像数量
             enable_hires: 是否启用高清修复
-            cookie: ModelScope Cookie
             checkpoint: Checkpoint节点
             lora1-4: LoRA节点
         Returns:
@@ -80,12 +77,14 @@ class ModelScopeImageNode:
             empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
             return ("", empty_tensor, f"错误: 图像尺寸不能超过2048x2048，当前为{width}x{height}")
             
-        # 使用传入的cookie或配置文件中的cookie
-        model_scope_cookie = cookie if cookie else self.config_loader.get("model_scope_cookie", "")
+        # 从配置文件中读取cookie
+        model_scope_cookie = self.config_loader.get("model_scope_cookie", "")
         
         if not model_scope_cookie:
+            plugin_dir = os.path.dirname(os.path.realpath(__file__))
+            config_file = os.path.join(plugin_dir, "config.json")
             empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
-            return ("", empty_tensor, "错误: 未配置ModelScope Cookie")
+            return ("", empty_tensor, f"错误: 未配置ModelScope Cookie。请在 {config_file} 文件中设置 model_scope_cookie 字段")
             
         # 构建LoRA参数
         lora_args = []
@@ -95,11 +94,20 @@ class ModelScopeImageNode:
                 
         # 构建checkpoint参数
         checkpoint_args = {}
+        num_inference_steps = 50  # 默认值
+        guidance_scale = 4.0       # 默认值
+        
         if checkpoint:
             checkpoint_args = {
                 "checkpointModelVersionId": checkpoint["modelVersionId"],
                 "checkpointShowInfo": checkpoint["checkpointShowInfo"]
             }
+            
+            # 从checkpoint获取numInferenceSteps和guidanceScale
+            num_inference_steps = checkpoint.get("numInferenceSteps", 50)
+            guidance_scale = checkpoint.get("guidanceScale", 4.0)
+            
+            logging.info(f"[ModelScope] 从Checkpoint节点获取参数: steps={num_inference_steps}, scale={guidance_scale}")
         else:
             # 使用默认checkpoint
             plugin_dir = os.path.dirname(os.path.realpath(__file__))
@@ -110,6 +118,12 @@ class ModelScopeImageNode:
                     "checkpointModelVersionId": checkpoints[0]["checkpointModelVersionId"],
                     "checkpointShowInfo": checkpoints[0]["checkpointShowInfo"]
                 }
+                
+                # 从默认checkpoint获取参数
+                num_inference_steps = checkpoints[0].get("numInferenceSteps", 50)
+                guidance_scale = checkpoints[0].get("guidanceScale", 4.0)
+                
+                logging.info(f"[ModelScope] 使用默认checkpoint参数: steps={num_inference_steps}, scale={guidance_scale}")
         
         # 构建请求参数
         request_data = {
@@ -126,9 +140,9 @@ class ModelScopeImageNode:
             },
             "basicDiffusionArgs": {
                 "sampler": "Euler",
-                "guidanceScale": 4,
+                "guidanceScale": guidance_scale,
                 "seed": -1,
-                "numInferenceSteps": 50,
+                "numInferenceSteps": num_inference_steps,
                 "numImagesPerPrompt": num_images,
                 "width": width,
                 "height": height
