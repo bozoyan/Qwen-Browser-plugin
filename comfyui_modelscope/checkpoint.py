@@ -3,9 +3,7 @@ ModelScope Checkpoint节点
 """
 
 import os
-import json
 import logging
-from typing import Dict, Any, List, Optional
 
 from .config_loader import ConfigLoader
 
@@ -24,7 +22,7 @@ class CheckpointNode:
         # 创建选项列表
         checkpoint_names = []
         for cp in checkpoints:
-            checkpoint_names.append(f"{cp['checkpointShowInfo']} (ID: {cp['checkpointModelVersionId']})")
+            checkpoint_names.append(f"{cp['CheckpointName']} (ID: {cp['checkpointModelVersionId']})")
             
         return {
             "required": {
@@ -83,7 +81,7 @@ class CheckpointNode:
             # 查找选中的checkpoint
             selected_checkpoint = None
             for cp in checkpoints:
-                cp_display_name = f"{cp['checkpointShowInfo']} (ID: {cp['checkpointModelVersionId']})"
+                cp_display_name = f"{cp['CheckpointName']} (ID: {cp['checkpointModelVersionId']})"
                 if cp_display_name == checkpoint:
                     selected_checkpoint = cp
                     break

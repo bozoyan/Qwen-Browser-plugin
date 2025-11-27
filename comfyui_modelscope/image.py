@@ -36,8 +36,8 @@ class ModelScopeImageNode:
         return {
             "required": {
                 "prompt": ("STRING", {"multiline": True, "default": "a photo of a beautiful woman"}),
-                "width": ("INT", {"default": 928, "min": 256, "max": 1280, "step": 64}),
-                "height": ("INT", {"default": 1664, "min": 256, "max": 1280, "step": 64}),
+                "width": ("INT", {"default": 928, "min": 256, "max": 2048, "step": 64}),
+                "height": ("INT", {"default": 1664, "min": 256, "max": 2048, "step": 64}),
                 "num_images": ("INT", {"default": 4, "min": 1, "max": 4, "step": 1}),
                 "enable_hires": ("BOOLEAN", {"default": True}),
                 "api_key": ("STRING", {"default": ""}),
@@ -81,8 +81,8 @@ class ModelScopeImageNode:
         if not prompt:
             return ("", None, "错误: 提示词不能为空")
             
-        if width > 1280 or height > 1280:
-            return ("", None, f"错误: 图像尺寸不能超过1280x1280，当前为{width}x{height}")
+        if width > 2048 or height > 2048:
+            return ("", None, f"错误: 图像尺寸不能超过2048x2048，当前为{width}x{height}")
             
         # 使用传入的cookie或配置文件中的cookie
         model_scope_cookie = cookie if cookie else self.config_loader.get("model_scope_cookie", "")

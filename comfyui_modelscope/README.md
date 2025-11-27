@@ -22,9 +22,10 @@
 主节点，用于生成图像。
 
 **输入参数：**
+
 - `prompt`: 图像提示词（必填）
-- `width`: 图像宽度（默认：928，最大：1280）
-- `height`: 图像高度（默认：1664，最大：1280）
+- `width`: 图像宽度（默认：928，最大：2048）
+- `height`: 图像高度（默认：1664，最大：2048）
 - `num_images`: 生成图像数量（默认：4，范围：1-4）
 - `enable_hires`: 是否启用高清修复（默认：True）
 - `api_key`: API密钥
@@ -33,6 +34,7 @@
 - `lora1-4`: LoRA节点（最多4个，可选）
 
 **输出：**
+
 - `image_urls`: 生成的图像URL列表
 - `images`: ComfyUI格式的图像张量
 - `status_log`: 状态日志
@@ -42,12 +44,14 @@
 Checkpoint选择节点，用于选择或自定义大模型。
 
 **输入参数：**
-- `checkpoint`: 从下拉菜单选择预定义的Checkpoint
+
+- `checkpoint`: 从下拉菜单选择预定义的Checkpoint（格式：模型名称 (ID: 模型ID)）
 - `custom_id`: 自定义Checkpoint ID
 - `custom_name`: 自定义Checkpoint名称
 - `use_custom`: 是否使用自定义Checkpoint
 
 **输出：**
+
 - `checkpoint`: Checkpoint配置
 
 ### ModelScope LoRA (LoraNode)
@@ -55,6 +59,7 @@ Checkpoint选择节点，用于选择或自定义大模型。
 LoRA选择节点，用于选择或自定义LoRA模型。
 
 **输入参数：**
+
 - `lora`: 从下拉菜单选择预定义的LoRA
 - `custom_id`: 自定义LoRA ID
 - `custom_name`: 自定义LoRA名称
@@ -63,6 +68,7 @@ LoRA选择节点，用于选择或自定义LoRA模型。
 - `scale`: LoRA权重
 
 **输出：**
+
 - `lora`: LoRA配置
 
 ## 配置方法
@@ -79,8 +85,8 @@ LoRA选择节点，用于选择或自定义LoRA模型。
     "model_scope_cookie": "您的ModelScope Cookie",
     "default_width": 928,
     "default_height": 1664,
-    "max_width": 1280,
-    "max_height": 1280
+    "max_width": 2048,
+    "max_height": 2048
 }
 ```
 

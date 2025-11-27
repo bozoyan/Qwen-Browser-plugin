@@ -142,7 +142,7 @@ WORKFLOW_EXAMPLE = {
     },
     "11": {
         "inputs": {
-            "checkpoint": "Qwen_Image_v1.safetensors (ID: 275167)",
+            "checkpoint": "Qwen_Image_v1 (ID: 275167)",
             "custom_id": "",
             "custom_name": "",
             "use_custom": False
