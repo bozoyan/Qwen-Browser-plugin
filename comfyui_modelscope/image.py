@@ -31,8 +31,8 @@ class ModelScopeImageNode:
         return {
             "required": {
                 "prompt": ("STRING", {"multiline": True, "default": "a photo of a beautiful woman"}),
-                "width": ("INT", {"default": 928, "min": 256, "max": 1280, "step": 64}),
-                "height": ("INT", {"default": 1664, "min": 256, "max": 1280, "step": 64}),
+                "width": ("INT", {"default": 928, "min": 256, "max": 2048, "step": 64}),
+                "height": ("INT", {"default": 1664, "min": 256, "max": 2048, "step": 64}),
                 "num_images": ("INT", {"default": 4, "min": 1, "max": 4, "step": 1}),
                 "enable_hires": ("BOOLEAN", {"default": True}),
                 
@@ -76,9 +76,9 @@ class ModelScopeImageNode:
             empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
             return ("", empty_tensor, "错误: 提示词不能为空")
             
-        if width > 1280 or height > 1280:
+        if width > 2048 or height > 2048:
             empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
-            return ("", empty_tensor, f"错误: 图像尺寸不能超过1280x1280，当前为{width}x{height}")
+            return ("", empty_tensor, f"错误: 图像尺寸不能超过2048x2048，当前为{width}x{height}")
             
         # 使用传入的cookie或配置文件中的cookie
         model_scope_cookie = cookie if cookie else self.config_loader.get("model_scope_cookie", "")
@@ -183,11 +183,22 @@ class ModelScopeImageNode:
                 return ("", None, f"提交任务失败: {error_msg}")
                 
             # 检查响应数据结构
-            if "Data" not in result or "taskId" not in result["Data"]:
+            if "Data" not in result:
                 logging.error(f"[ModelScope] API响应格式不正确: {result}")
-                return ("", None, "API响应格式不正确")
+                empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+                return ("", empty_tensor, "API响应格式不正确")
                 
-            task_id = result["Data"]["taskId"]
+            # 检查taskId位置
+            task_id = None
+            if "taskId" in result["Data"]:
+                task_id = result["Data"]["taskId"]
+            elif "data" in result["Data"] and "taskId" in result["Data"]["data"]:
+                task_id = result["Data"]["data"]["taskId"]
+            else:
+                logging.error(f"[ModelScope] 无法从API响应中获取taskId: {result}")
+                empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+                return ("", empty_tensor, "无法从API响应中获取taskId")
+                
             logging.info(f"[ModelScope] 任务提交成功，任务ID: {task_id}")
             
             # 轮询任务状态
@@ -224,7 +235,9 @@ class ModelScopeImageNode:
                     continue
                     
             if not images:
-                return ("", None, "所有图像下载或处理失败")
+                # 创建一个空的张量，避免ComfyUI报错
+                empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+                return ("", empty_tensor, "所有图像下载或处理失败")
                 
             # 合并所有图像
             combined_images = torch.cat(images, dim=0)
@@ -274,16 +287,40 @@ class ModelScopeImageNode:
                     return ([], f"轮询任务状态失败: {error_msg}")
                     
                 # 检查响应数据结构
-                if "Data" not in result or "data" not in result["Data"]:
+                if "Data" not in result:
                     logging.error(f"[ModelScope] 轮询API响应格式不正确: {result}")
                     return ([], "轮询API响应格式不正确")
                     
-                task_data = result["Data"]["data"]
+                # 检查data位置
+                task_data = None
+                if "data" in result["Data"]:
+                    task_data = result["Data"]["data"]
+                else:
+                    # 可能是直接在Data中
+                    task_data = result["Data"]
+                    
+                if not task_data:
+                    logging.error(f"[ModelScope] 无法从轮询API响应中获取任务数据: {result}")
+                    return ([], "无法从轮询API响应中获取任务数据")
                 status = task_data.get("status", "")
                 
                 if status == "COMPLETED":
-                    images = [item.get("url") for item in task_data.get("predictResult", []) if item and item.get("url")]
+                    # 尝试从不同位置获取图像
+                    images = []
+                    
+                    # 尝试从predictResult获取
+                    if "predictResult" in task_data:
+                        images = [item.get("url") for item in task_data.get("predictResult", []) if item and item.get("url")]
+                    
+                    # 尝试从其他可能的位置获取
+                    elif "images" in task_data:
+                        images = [item.get("url") if isinstance(item, dict) else item for item in task_data.get("images", []) if item]
+                    
+                    # 添加调试信息
                     logging.info(f"[ModelScope] 任务完成，生成了{len(images)}张图像")
+                    if not images:
+                        logging.warning(f"[ModelScope] 无法从响应中提取图像URL，任务数据: {task_data}")
+                    
                     return (images, "任务完成")
                     
                 elif status == "FAILED":
@@ -308,6 +345,8 @@ class ModelScopeImageNode:
                 logging.error(f"[ModelScope] 轮询请求失败: {e}")
                 time.sleep(5)
                 
+        # 如果超时，返回空图像列表
+        logging.warning(f"[ModelScope] 任务轮询超时，可能需要更长时间")
         return ([], "任务超时")
         
     def extract_csrf_token(self, cookie_str):
