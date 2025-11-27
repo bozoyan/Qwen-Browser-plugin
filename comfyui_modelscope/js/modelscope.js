@@ -28,12 +28,8 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function() {
                 const ret = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
-                // 添加自定义样式
-                this.addInput("checkpoint", "CHECKPOINT");
-                this.addInput("lora1", "LORA");
-                this.addInput("lora2", "LORA");
-                this.addInput("lora3", "LORA");
-                this.addInput("lora4", "LORA");
+                // 在这里可以添加其他自定义行为，但不要添加输入端口
+                // 因为输入端口已经在INPUT_TYPES中定义了
                 
                 return ret;
             };
@@ -117,39 +113,29 @@ function showConfigDialog() {
 }
 
 // 保存配置
-async function saveConfig(apiKey, cookie) {
-    const response = await api.fetchApi("/modelscope/config", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            api_key: apiKey,
-            model_scope_cookie: cookie
-        }),
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "保存配置失败");
+function saveConfig(apiKey, cookie) {
+    try {
+        localStorage.setItem("modelscope_api_key", apiKey);
+        localStorage.setItem("modelscope_cookie", cookie);
+        console.log("配置已保存到本地存储");
+    } catch (error) {
+        console.error("保存配置失败:", error);
+        throw new Error(error.message || "保存配置失败");
     }
-    
-    return response.json();
 }
 
 // 加载配置
-async function loadConfig() {
+function loadConfig() {
     try {
-        const response = await api.fetchApi("/modelscope/config");
-        if (response.ok) {
-            return await response.json();
-        }
+        return {
+            api_key: localStorage.getItem("modelscope_api_key") || "",
+            model_scope_cookie: localStorage.getItem("modelscope_cookie") || ""
+        };
     } catch (error) {
         console.error("加载配置失败:", error);
+        return {
+            api_key: "",
+            model_scope_cookie: ""
+        };
     }
-    
-    return {
-        api_key: "",
-        model_scope_cookie: ""
-    };
 }

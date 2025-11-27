@@ -3,28 +3,23 @@ ModelScope图像生成节点
 """
 
 import os
-import json
 import time
 import requests
 import logging
 import re
-import uuid
-from typing import List, Dict, Any, Tuple, Optional
 
 try:
     import torch
     import numpy as np
-    import comfy.utils
-    import comfy.model_management
     from PIL import Image
     import io
-    import base64
 except ImportError:
-    pass
+    torch = None
+    numpy = None
+    Image = None
+    io = None
 
 from .config_loader import ConfigLoader
-from .checkpoint import CheckpointNode
-from .lora import LoraNode
 
 class ModelScopeImageNode:
     """ModelScope图像生成节点"""
@@ -36,11 +31,11 @@ class ModelScopeImageNode:
         return {
             "required": {
                 "prompt": ("STRING", {"multiline": True, "default": "a photo of a beautiful woman"}),
-                "width": ("INT", {"default": 928, "min": 256, "max": 2048, "step": 64}),
-                "height": ("INT", {"default": 1664, "min": 256, "max": 2048, "step": 64}),
+                "width": ("INT", {"default": 928, "min": 256, "max": 1280, "step": 64}),
+                "height": ("INT", {"default": 1664, "min": 256, "max": 1280, "step": 64}),
                 "num_images": ("INT", {"default": 4, "min": 1, "max": 4, "step": 1}),
                 "enable_hires": ("BOOLEAN", {"default": True}),
-                "api_key": ("STRING", {"default": ""}),
+                
                 "cookie": ("STRING", {"multiline": True, "default": ""}),
             },
             "optional": {
@@ -60,7 +55,7 @@ class ModelScopeImageNode:
     def __init__(self):
         self.config_loader = ConfigLoader()
         
-    def generate_images(self, prompt, width, height, num_images, enable_hires, api_key, cookie, 
+    def generate_images(self, prompt, width, height, num_images, enable_hires, cookie, 
                        checkpoint=None, lora1=None, lora2=None, lora3=None, lora4=None):
         """
         生成图像
@@ -70,7 +65,6 @@ class ModelScopeImageNode:
             height: 图像高度
             num_images: 生成图像数量
             enable_hires: 是否启用高清修复
-            api_key: API密钥
             cookie: ModelScope Cookie
             checkpoint: Checkpoint节点
             lora1-4: LoRA节点
@@ -79,16 +73,19 @@ class ModelScopeImageNode:
         """
         # 验证参数
         if not prompt:
-            return ("", None, "错误: 提示词不能为空")
+            empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+            return ("", empty_tensor, "错误: 提示词不能为空")
             
-        if width > 2048 or height > 2048:
-            return ("", None, f"错误: 图像尺寸不能超过2048x2048，当前为{width}x{height}")
+        if width > 1280 or height > 1280:
+            empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+            return ("", empty_tensor, f"错误: 图像尺寸不能超过1280x1280，当前为{width}x{height}")
             
         # 使用传入的cookie或配置文件中的cookie
         model_scope_cookie = cookie if cookie else self.config_loader.get("model_scope_cookie", "")
         
         if not model_scope_cookie:
-            return ("", None, "错误: 未配置ModelScope Cookie")
+            empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+            return ("", empty_tensor, "错误: 未配置ModelScope Cookie")
             
         # 构建LoRA参数
         lora_args = []
@@ -177,10 +174,18 @@ class ModelScopeImageNode:
             
             result = response.json()
             
+            # 打印完整响应以便调试
+            logging.info(f"[ModelScope] API响应: {result}")
+            
             if not result.get("Success"):
                 error_msg = result.get("Message", "未知错误")
                 logging.error(f"[ModelScope] 提交任务失败: {error_msg}")
                 return ("", None, f"提交任务失败: {error_msg}")
+                
+            # 检查响应数据结构
+            if "Data" not in result or "taskId" not in result["Data"]:
+                logging.error(f"[ModelScope] API响应格式不正确: {result}")
+                return ("", None, "API响应格式不正确")
                 
             task_id = result["Data"]["taskId"]
             logging.info(f"[ModelScope] 任务提交成功，任务ID: {task_id}")
@@ -189,7 +194,9 @@ class ModelScopeImageNode:
             urls, status = self.poll_task_status(task_id, headers)
             
             if not urls:
-                return ("", None, f"图像生成失败: {status}")
+                # 创建一个空的张量，避免ComfyUI报错
+                empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+                return ("", empty_tensor, f"图像生成失败: {status}")
                 
             # 下载图像并转换为ComfyUI格式
             images = []
@@ -229,10 +236,14 @@ class ModelScopeImageNode:
             
         except requests.exceptions.RequestException as e:
             logging.error(f"[ModelScope] 请求失败: {e}")
-            return ("", None, f"请求失败: {e}")
+            # 创建一个空的张量，避免ComfyUI报错
+            empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+            return ("", empty_tensor, f"请求失败: {e}")
         except Exception as e:
             logging.error(f"[ModelScope] 生成图像失败: {e}")
-            return ("", None, f"生成图像失败: {e}")
+            # 创建一个空的张量，避免ComfyUI报错
+            empty_tensor = torch.zeros((1, 64, 64, 3), dtype=torch.float32) if torch else None
+            return ("", empty_tensor, f"生成图像失败: {e}")
             
     def poll_task_status(self, task_id, headers, max_wait_time=300):
         """
@@ -254,10 +265,18 @@ class ModelScopeImageNode:
                 
                 result = response.json()
                 
+                # 打印完整响应以便调试
+                logging.debug(f"[ModelScope] 轮询API响应: {result}")
+                
                 if not result.get("Success"):
                     error_msg = result.get("Message", "未知错误")
                     logging.error(f"[ModelScope] 轮询任务状态失败: {error_msg}")
                     return ([], f"轮询任务状态失败: {error_msg}")
+                    
+                # 检查响应数据结构
+                if "Data" not in result or "data" not in result["Data"]:
+                    logging.error(f"[ModelScope] 轮询API响应格式不正确: {result}")
+                    return ([], "轮询API响应格式不正确")
                     
                 task_data = result["Data"]["data"]
                 status = task_data.get("status", "")
