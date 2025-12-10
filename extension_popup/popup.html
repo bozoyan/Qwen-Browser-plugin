@@ -18,19 +18,30 @@
         <div class="main-content">
             <!-- 图片上传区域 -->
             <div class="upload-section">
+                <!-- URL输入区域 -->
+                <div class="url-input-section">
+                    <div class="input-group">
+                        <input type="url" id="imageUrlInput" class="url-input" placeholder="输入图片URL地址...">
+                        <button id="loadUrlBtn" class="btn btn-secondary">加载URL图片</button>
+                    </div>
+                </div>
+
+                <div class="separator">或</div>
+
                 <div id="fileDropArea" class="file-drop-area">
                     <input type="file" id="fileInput" class="file-input" accept=".png,.jpg,.jpeg,.gif,.bmp" />
-                    
+
                     <!-- 拖放提示 -->
                     <div id="dropPlaceholder" class="drop-placeholder">
                         <div class="feature-icon">📁</div>
                         <p>拖放图片到此处，或点击上传</p>
                         <p class="text-muted">(支持 PNG、JPG、JPEG、GIF、BMP)</p>
                     </div>
-                    
+
                     <!-- 图片预览 -->
                     <div id="imagePreview" class="image-preview" style="display: none;">
                         <img id="previewImg" src="" alt="预览图片">
+                        <button id="removeImageBtn" class="remove-image-btn" title="删除图片">×</button>
                     </div>
                 </div>
 
@@ -45,6 +56,21 @@
                 <!-- 操作按钮 -->
                 <div class="action-buttons">
                     <button id="analyzeBtn" class="btn btn-primary" disabled>反推并生成</button>
+                    <button id="stopBtn" class="btn btn-danger" style="display: none;">停止处理</button>
+                </div>
+            </div>
+
+            <!-- 反推文字预览区域 -->
+            <div class="prompt-preview-section">
+                <h3>📝 图片反推文字</h3>
+                <div id="promptPreview" class="prompt-preview">
+                    <div class="prompt-placeholder">
+                        处理完成后将显示图片的反推描述文字
+                    </div>
+                    <div id="promptContent" class="prompt-content" style="display: none;">
+                        <div class="prompt-text" id="promptText"></div>
+                        <button id="copyPromptBtn" class="btn btn-small btn-secondary" style="display: none;">复制提示词</button>
+                    </div>
                 </div>
             </div>
 
@@ -58,14 +84,14 @@
                         <div id="queueProgress" class="progress-fill"></div>
                     </div>
                 </div>
-                
+
                 <!-- 主预览区域 -->
                 <div id="mainPreview" class="main-preview">
                     <div class="preview-placeholder">
                         选择下方缩略图查看
                     </div>
                 </div>
-                
+
                 <!-- 缩略图区域 -->
                 <div id="thumbnailsContainer" class="thumbnails-container">
                     <!-- 缩略图将在这里动态生成 -->

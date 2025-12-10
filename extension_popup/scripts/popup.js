@@ -68,6 +68,33 @@ class PopupApp {
             console.error('❌ [Popup] handleAnalyze方法重写失败');
         }
 
+        // 重要：绑定analyzeBtn和stopBtn的事件监听器
+        if (this.uiManager.elements.analyzeBtn) {
+            // 添加一个测试点击事件来确认按钮可点击
+            this.uiManager.elements.analyzeBtn.addEventListener('click', () => {
+                console.log('🔘 [Popup] 按钮被点击了！测试事件触发。');
+            });
+
+            // 添加主要的事件监听器
+            this.uiManager.elements.analyzeBtn.addEventListener('click', this.handleAnalyze.bind(this));
+            console.log('✅ [Popup] analyzeBtn事件监听器已绑定到popup.js的handleAnalyze方法');
+            console.log('🔍 [Popup] 按钮状态:', {
+                存在: !!this.uiManager.elements.analyzeBtn,
+                禁用状态: this.uiManager.elements.analyzeBtn.disabled,
+                可见: this.uiManager.elements.analyzeBtn.style.display !== 'none'
+            });
+        } else {
+            console.error('❌ [Popup] analyzeBtn元素未找到');
+        }
+
+        // 绑定停止按钮事件
+        if (this.uiManager.elements.stopBtn) {
+            this.uiManager.elements.stopBtn.addEventListener('click', this.handleStop.bind(this));
+            console.log('✅ [Popup] stopBtn事件监听器已绑定');
+        } else {
+            console.error('❌ [Popup] stopBtn元素未找到');
+        }
+
         // 监听窗口关闭事件
         window.addEventListener('beforeunload', () => {
             if (this.isProcessing) {
@@ -100,6 +127,7 @@ class PopupApp {
      */
     async handleAnalyze() {
         console.log('🚀 [Popup] 开始处理图片分析请求');
+        console.log('🎯 [Popup] handleAnalyze方法被成功调用！按钮点击事件正常工作。');
 
         if (!this.uiManager.currentImageData) {
             console.log('❌ [Popup] 没有选择图片');
@@ -143,9 +171,10 @@ class PopupApp {
             console.log('✅ [Popup] 开始处理图片...');
             this.isProcessing = true;
 
-            // 禁用按钮
+            // 禁用按钮并显示停止按钮
             this.uiManager.elements.analyzeBtn.disabled = true;
             this.uiManager.elements.analyzeBtn.textContent = '处理中...';
+            this.uiManager.showStopButton();
 
             console.log('🔄 [Popup] 调用图片处理API...');
             // 开始处理
@@ -159,12 +188,47 @@ class PopupApp {
         } finally {
             this.isProcessing = false;
 
-            // 恢复按钮
+            // 恢复按钮并隐藏停止按钮
             this.uiManager.elements.analyzeBtn.disabled = false;
             this.uiManager.elements.analyzeBtn.textContent = '反推并生成';
+            this.uiManager.hideStopButton();
         }
     }
-    
+
+    /**
+     * 处理停止按钮点击
+     */
+    handleStop() {
+        console.log('🛑 [Popup] 用户点击停止按钮');
+
+        if (!this.isProcessing) {
+            console.log('⚠️ [Popup] 当前没有正在处理的任务');
+            return;
+        }
+
+        // 取消当前任务
+        if (this.apiManager && this.apiManager.cancelCurrentTask) {
+            this.apiManager.cancelCurrentTask();
+        }
+
+        // 更新状态
+        this.isProcessing = false;
+
+        // 恢复按钮状态
+        this.uiManager.elements.analyzeBtn.disabled = false;
+        this.uiManager.elements.analyzeBtn.textContent = '反推并生成';
+        this.uiManager.hideStopButton();
+
+        // 清除进度信息
+        this.uiManager.hideQueueInfo();
+        this.uiManager.hideUploadProgress();
+
+        // 显示取消消息
+        this.uiManager.showToast('处理已取消', 'info');
+
+        console.log('✅ [Popup] 任务取消完成');
+    }
+
     /**
      * 使用真实API处理图片
      */
@@ -187,6 +251,12 @@ class PopupApp {
             onAnalyzeComplete: (result) => {
                 this.uiManager.updateQueueInfo('图片分析完成，开始生成...', 40);
                 console.log('✅ [Popup] 图片分析完成');
+
+                // 显示反推文字
+                if (result.prompt) {
+                    this.uiManager.showPromptPreview(result.prompt);
+                    console.log('📝 [Popup] 反推文字已显示:', result.prompt);
+                }
             },
 
             // 生成开始

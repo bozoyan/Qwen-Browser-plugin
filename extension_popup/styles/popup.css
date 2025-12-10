@@ -538,3 +538,128 @@ body {
 .thumbnails-container::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+/* 新增样式 */
+.url-input-section {
+    margin-bottom: 12px;
+}
+
+.input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.url-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.url-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.separator {
+    text-align: center;
+    color: #6c757d;
+    font-size: 14px;
+    margin: 12px 0;
+    position: relative;
+}
+
+.separator::before,
+.separator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background-color: #ddd;
+}
+
+.separator::before {
+    left: 0;
+}
+
+.separator::after {
+    right: 0;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.remove-image-btn:hover {
+    background: rgba(220, 53, 69, 1);
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.prompt-preview-section {
+    margin-bottom: 16px;
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prompt-preview-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+.prompt-preview {
+    min-height: 60px;
+}
+
+.prompt-placeholder {
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    padding: 16px;
+    border: 1px dashed #ddd;
+    border-radius: 6px;
+}
+
+.prompt-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.prompt-text {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    max-height: 120px;
+    overflow-y: auto;
+}

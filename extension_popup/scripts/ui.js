@@ -22,15 +22,21 @@ class UIManager {
             dropPlaceholder: document.getElementById('dropPlaceholder'),
             imagePreview: document.getElementById('imagePreview'),
             previewImg: document.getElementById('previewImg'),
-            
+
+            // URL输入相关
+            imageUrlInput: document.getElementById('imageUrlInput'),
+            loadUrlBtn: document.getElementById('loadUrlBtn'),
+
             // 进度相关
             uploadProgress: document.getElementById('uploadProgress'),
             progressFill: document.getElementById('progressFill'),
             progressText: document.getElementById('progressText'),
-            
+
             // 按钮
             analyzeBtn: document.getElementById('analyzeBtn'),
             settingsBtn: document.getElementById('settingsBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            removeImageBtn: document.getElementById('removeImageBtn'),
             
             // 结果显示
             queueInfo: document.getElementById('queueInfo'),
@@ -38,6 +44,11 @@ class UIManager {
             queueProgress: document.getElementById('queueProgress'),
             mainPreview: document.getElementById('mainPreview'),
             thumbnailsContainer: document.getElementById('thumbnailsContainer'),
+
+            // 反推文字预览
+            promptContent: document.getElementById('promptContent'),
+            promptText: document.getElementById('promptText'),
+            copyPromptBtn: document.getElementById('copyPromptBtn'),
             
 
             
@@ -73,20 +84,34 @@ class UIManager {
         this.elements.fileDropArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
         this.elements.fileDropArea.addEventListener('drop', this.handleDrop.bind(this));
         this.elements.fileDropArea.addEventListener('click', () => this.elements.fileInput.click());
-        
+
         // 文件选择事件
         this.elements.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-        
-        // 按钮事件
-        this.elements.analyzeBtn.addEventListener('click', this.handleAnalyze.bind(this));
+
+        // URL加载事件
+        this.elements.loadUrlBtn.addEventListener('click', this.handleLoadImageUrl.bind(this));
+        this.elements.imageUrlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.handleLoadImageUrl();
+            }
+        });
+
+        // 按钮事件（注意：analyzeBtn的事件由popup.js处理，这里不绑定）
+        // this.elements.analyzeBtn.addEventListener('click', this.handleAnalyze.bind(this));
         this.elements.settingsBtn.addEventListener('click', this.showSettings.bind(this));
         this.elements.closeSettings.addEventListener('click', this.hideSettings.bind(this));
         this.elements.saveSettings.addEventListener('click', this.saveSettings.bind(this));
         this.elements.resetSettings.addEventListener('click', this.resetSettings.bind(this));
         this.elements.loadModels.addEventListener('click', this.loadModels.bind(this));
 
+        // 删除图片和复制按钮事件
+        this.elements.removeImageBtn.addEventListener('click', this.handleRemoveImage.bind(this));
+        this.elements.copyPromptBtn.addEventListener('click', this.handleCopyPrompt.bind(this));
+
         // 主预览区域点击事件
         this.elements.mainPreview.addEventListener('click', this.handleMainPreviewClick.bind(this));
+
+        console.log('🔧 [UI] 基础事件绑定完成（analyzeBtn由popup.js处理）');
     }
     
     /**
@@ -849,7 +874,147 @@ class UIManager {
             }
         }, CONFIG.UI.TOAST_DURATION);
     }
-    
+
+    /**
+     * 处理URL图片加载
+     */
+    async handleLoadImageUrl() {
+        const url = this.elements.imageUrlInput.value.trim();
+        if (!url) {
+            this.showToast('请输入图片URL', 'warning');
+            return;
+        }
+
+        // 验证URL格式
+        try {
+            new URL(url);
+        } catch (error) {
+            this.showToast('无效的URL格式', 'error');
+            return;
+        }
+
+        try {
+            this.showToast('正在加载图片...', 'info');
+
+            // 清除当前图片
+            this.clearCurrentImage();
+
+            // 加载图片
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            if (!blob.type.startsWith('image/')) {
+                throw new Error('URL不是有效的图片格式');
+            }
+
+            // 转换为base64
+            const base64 = await this.blobToBase64(blob);
+            this.currentImageData = base64;
+
+            // 显示预览
+            this.elements.previewImg.src = base64;
+            this.elements.dropPlaceholder.style.display = 'none';
+            this.elements.imagePreview.style.display = 'block';
+            this.elements.analyzeBtn.disabled = false;
+
+            this.showToast('图片加载成功', 'success');
+
+        } catch (error) {
+            console.error('URL图片加载失败:', error);
+            this.showToast('图片加载失败: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * 处理删除图片
+     */
+    handleRemoveImage() {
+        this.clearCurrentImage();
+        this.showToast('图片已删除', 'info');
+    }
+
+    /**
+     * 清除当前图片
+     */
+    clearCurrentImage() {
+        this.currentImageData = null;
+        this.elements.previewImg.src = '';
+        this.elements.imagePreview.style.display = 'none';
+        this.elements.dropPlaceholder.style.display = 'block';
+        this.elements.analyzeBtn.disabled = true;
+        this.elements.imageUrlInput.value = '';
+
+        // 清除反推文字
+        this.clearPromptPreview();
+    }
+
+    /**
+     * 处理复制提示词
+     */
+    handleCopyPrompt() {
+        const promptText = this.elements.promptText.textContent;
+        if (!promptText) {
+            this.showToast('没有可复制的提示词', 'warning');
+            return;
+        }
+
+        navigator.clipboard.writeText(promptText).then(() => {
+            this.showToast('提示词已复制到剪贴板', 'success');
+        }).catch(error => {
+            console.error('复制失败:', error);
+            this.showToast('复制失败', 'error');
+        });
+    }
+
+    /**
+     * 显示反推文字
+     */
+    showPromptPreview(promptText) {
+        this.elements.promptText.textContent = promptText;
+        this.elements.promptContent.style.display = 'flex';
+        this.elements.copyPromptBtn.style.display = 'inline-block';
+        this.elements.promptContent.parentElement.querySelector('.prompt-placeholder').style.display = 'none';
+    }
+
+    /**
+     * 清除反推文字预览
+     */
+    clearPromptPreview() {
+        this.elements.promptText.textContent = '';
+        this.elements.promptContent.style.display = 'none';
+        this.elements.copyPromptBtn.style.display = 'none';
+        this.elements.promptContent.parentElement.querySelector('.prompt-placeholder').style.display = 'block';
+    }
+
+    /**
+     * 显示/隐藏停止按钮
+     */
+    showStopButton() {
+        if (this.elements.stopBtn) {
+            this.elements.stopBtn.style.display = 'inline-block';
+        }
+    }
+
+    hideStopButton() {
+        if (this.elements.stopBtn) {
+            this.elements.stopBtn.style.display = 'none';
+        }
+    }
+
+    /**
+     * 将Blob转换为Base64
+     */
+    blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
 
 }
 

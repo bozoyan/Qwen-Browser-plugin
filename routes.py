@@ -1039,6 +1039,12 @@ def process_image_complete():
 
                     if response_json.get('Success') and response_json.get('Data'):
                         task_data = response_json['Data'].get('data', {})
+
+                        # 检查task_data是否有效
+                        if not task_data:
+                            print(f"⚠️ 获取到空的task_data，继续轮询...")
+                            continue
+
                         status = task_data.get('status', '')
 
                         if status == 'COMPLETED':
@@ -1049,6 +1055,10 @@ def process_image_complete():
                                     images = [item.get('imageUrl') for item in predict_result['images'] if item and item.get('imageUrl')]
                                     print(f"✅ 获取到{len(images)}张图片")
                                     break
+                                else:
+                                    print("⚠️ predictResult中未找到有效的images数组")
+                            else:
+                                print(f"⚠️ predictResult格式异常: {task_data.get('predictResult')}")
                         elif status == 'FAILED':
                             error_msg = task_data.get('errorMsg', '未知错误')
                             print(f"❌ 任务失败: {error_msg}")

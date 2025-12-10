@@ -5,6 +5,7 @@ class APIManager {
         this.timeout = CONFIG.API.TIMEOUT;
         this.pollInterval = CONFIG.API.POLL_INTERVAL;
         this.currentTaskId = null;
+        this.currentRequest = null;
     }
     
     /**
@@ -351,7 +352,15 @@ class APIManager {
      * 取消当前任务
      */
     cancelCurrentTask() {
+        console.log('🛑 [API] 取消当前任务');
         this.currentTaskId = null;
+
+        // 如果有正在进行的请求，取消它
+        if (this.currentRequest) {
+            console.log('🚫 [API] 取消当前HTTP请求');
+            this.currentRequest.abort();
+            this.currentRequest = null;
+        }
     }
     
     /**
@@ -402,6 +411,9 @@ class APIManager {
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
 
+                // 保存当前请求引用以便取消
+                this.currentRequest = xhr;
+
                 // 监听上传进度
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable && onUploadProgress) {
@@ -415,6 +427,9 @@ class APIManager {
                 xhr.addEventListener('load', () => {
                     console.log('📥 [API] 综合端点响应:', xhr.status);
                     console.log('📄 [API] 响应内容:', xhr.responseText);
+
+                    // 清理当前请求引用
+                    this.currentRequest = null;
 
                     try {
                         if (xhr.status === 200) {
@@ -463,6 +478,10 @@ class APIManager {
                 // 监听错误
                 xhr.addEventListener('error', () => {
                     console.error('❌ [API] 网络错误');
+
+                    // 清理当前请求引用
+                    this.currentRequest = null;
+
                     if (onError) {
                         onError(new Error(CONFIG.ERRORS.NETWORK_ERROR));
                     }
@@ -472,6 +491,10 @@ class APIManager {
                 // 监听超时
                 xhr.addEventListener('timeout', () => {
                     console.error('❌ [API] 请求超时');
+
+                    // 清理当前请求引用
+                    this.currentRequest = null;
+
                     if (onError) {
                         onError(new Error(CONFIG.ERRORS.TIMEOUT_ERROR));
                     }
