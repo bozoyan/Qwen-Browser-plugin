@@ -60,9 +60,10 @@ class ModelScopeTaskPoller:
                     else:
                         print(f"⚠️ Data.data结构异常: {data.get('Data')}")
 
-                elif data.get('Code') == 400003 or 'NumberFormatException' in str(data.get('Data', {}).get('message', '')):
+                elif data.get('Code') == 40000 or 'NumberFormatException' in str(data.get('Data', {}).get('message', '')):
                     print(f"🔄 检测到ID格式错误，UUID格式不支持数字轮询")
-                    return None, data
+                    # 返回False而不是None，以便在poll_task_with_fallback中处理
+                    return False, {'error': 'UUID format not supported', 'original_data': data}
 
                 else:
                     print(f"⚠️ 任务 {task_id} 轮询响应异常: {data}")
@@ -89,8 +90,44 @@ class ModelScopeTaskPoller:
         """
         print(f"🔄 开始智能轮询任务 {task_id} (类型: {id_type})")
 
-        # 直接使用数字轮询，因为根据日志，轮询API需要数字格式的taskId
-        return self.poll_task_with_numeric_id(task_id, max_attempts, interval)
+        if id_type == 'auto':
+            # 自动检测ID类型
+            if task_id.isdigit():
+                id_type = 'numeric'
+                print(f"🔢 检测到数字格式ID，使用数字轮询")
+            elif self.is_uuid_format(task_id):
+                id_type = 'uuid'
+                print(f"🆔 检测到UUID格式ID，使用UUID轮询")
+            else:
+                # 尝试先作为数字ID处理
+                id_type = 'numeric'
+                print(f"❓ 未确定ID格式，尝试数字轮询")
+
+        # 首先尝试指定的类型
+        if id_type == 'numeric':
+            result, data = self.poll_task_with_numeric_id(task_id, max_attempts, interval)
+
+            # 如果检测到UUID格式错误，提供错误指导
+            if result is False and 'NumberFormatException' in str(data):
+                print(f"🔄 数字轮询失败，UUID格式ID不被标准轮询API支持")
+                # 返回包含指导信息的错误
+                return False, self.create_error_response_with_guidance(task_id, data)
+
+            return result, data
+
+        elif id_type == 'uuid':
+            # UUID格式的ID需要特殊处理
+            print(f"❌ UUID格式的任务ID目前不被轮询API支持")
+            return False, self.create_error_response_with_guidance(task_id, {'error': 'UUID format not supported by polling API'})
+
+        else:
+            return False, {'error': f'不支持的ID类型: {id_type}'}
+
+    def is_uuid_format(self, value: str) -> bool:
+        """检查是否为UUID格式"""
+        import re
+        uuid_pattern = r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+        return bool(re.match(uuid_pattern, value))
 
     def get_modelscope_gallery_link(self) -> str:
         """获取ModelScope图片库链接"""

@@ -944,8 +944,8 @@ def process_image_complete():
 
             # 处理checkpoint参数（可能是字符串或字典）
 
-            # 构建LoRA参数
-            lora_args = {}
+            # 构建LoRA参数 - 需要数组格式
+            lora_args = []  # 改为数组格式
             active_loras = []
 
             # 处理LoRA参数（可能是字典或字符串）
@@ -960,14 +960,35 @@ def process_image_complete():
                         lora_name = lora.get('LoraName', f'LoRA_{i+1}')
                         if lora_id:
                             active_loras.append(lora_name)
-                            lora_args[lora_name] = scale
+                            # 创建LoRA对象格式的参数
+                            lora_obj = {
+                                'loraName': lora_name,
+                                'modelVersionId': lora_id,
+                                'scale': scale
+                            }
+                            lora_args.append(lora_obj)
                             print(f"🔗 [PROCESS] 从字典获取LoRA: Name={lora_name}, ID={lora_id}, Scale={scale}")
                     elif isinstance(lora, str) and lora.strip():
-                        # 如果是字符串格式
+                        # 如果是字符串格式，尝试从model_info获取ID
                         lora_name = lora.strip()
-                        active_loras.append(lora_name)
-                        lora_args[lora_name] = scale
-                        print(f"🔗 [PROCESS] 从字符串获取LoRA: Name={lora_name}, Scale={scale}")
+                        lora_id = None
+
+                        # 在model_info中查找对应的ID
+                        if lora_name in model_info:
+                            lora_id = model_info[lora_name]['id']
+
+                        if lora_id:
+                            active_loras.append(lora_name)
+                            # 创建LoRA对象格式的参数
+                            lora_obj = {
+                                'loraName': lora_name,
+                                'modelVersionId': lora_id,
+                                'scale': scale
+                            }
+                            lora_args.append(lora_obj)
+                            print(f"🔗 [PROCESS] 从字符串获取LoRA: Name={lora_name}, ID={lora_id}, Scale={scale}")
+                        else:
+                            print(f"⚠️ [PROCESS] 未找到LoRA {lora_name} 的ID，跳过")
 
             print(f"🔧 [PROCESS] 构建自定义请求参数:")
 
@@ -1004,16 +1025,18 @@ def process_image_complete():
                     model_args['checkpointShowInfo'] = checkpoint_name
 
             # 如果有LoRA，添加LoRA参数
-            if active_loras:
+            if lora_args:
                 model_args['loraArgs'] = lora_args
 
             print(f"🎯 [PROCESS] 参数处理完成:")
             print(f"   Checkpoint: {checkpoint_name} (ID: {checkpoint_id})")
             print(f"   Active LoRAs: {active_loras}")
-            print(f"   LoRA Args: {lora_args}")
+            print(f"   LoRA Args (数组格式): {lora_args}")
+            for i, lora in enumerate(lora_args):
+                print(f"      LoRA {i+1}: {lora}")
 
             # 构建基础提示词
-            base_prompt = "feifei, "  # 可以根据需要调整
+            base_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,big boobs,妃妃,"  # 可以根据需要调整
 
             request_body = {
                 'taskType': 'TXT_2_IMG',
@@ -1286,10 +1309,17 @@ def process_image_complete():
                     interval=3
                 )
 
-                if success and result_data.get('success'):
+                if success and result_data.get('Success'):
                     # 任务成功，处理结果数据
-                    data = result_data.get('data', {})
-                    task_data = data.get('data', {}) if data.get('data') else data
+                    # 根据实际响应结构：result_data.Data.data
+                    if result_data.get('Data') and isinstance(result_data['Data'], dict):
+                        inner_data = result_data['Data']
+                        if inner_data.get('data') and isinstance(inner_data['data'], dict):
+                            task_data = inner_data['data']
+                        else:
+                            task_data = inner_data
+                    else:
+                        task_data = {}
 
                     print(f"   📊 任务数据结构: {str(task_data)[:200]}...")
 
@@ -1338,6 +1368,25 @@ def process_image_complete():
                     if 'guidance' in error_info:
                         print(f"💡 任务失败，提供指导信息")
                         return jsonify(error_info)
+                    elif 'UUID format not supported' in str(error_msg):
+                        print(f"❌ UUID格式ID不被轮询API支持")
+                        # 创建指导信息
+                        guided_response = {
+                            'success': False,
+                            'error': 'UUID格式ID不被轮询API支持',
+                            'task_id': task_id,
+                            'guidance': {
+                                'message': 'ModelScope API现在返回UUID格式的任务ID，但轮询API仍需要数字格式ID',
+                                'suggestions': [
+                                    '请手动到ModelScope图片库查看生成的图片',
+                                    '任务ID: ' + task_id,
+                                    '或者等待找到支持UUID格式轮询的新API端点'
+                                ],
+                                'gallery_link': 'https://www.modelscope.cn/studios',
+                                'task_id': task_id
+                            }
+                        }
+                        return jsonify(guided_response)
                     else:
                         print(f"❌ 任务失败: {error_msg}")
                         return jsonify({'success': False, 'error': error_msg})
