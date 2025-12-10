@@ -43,6 +43,52 @@ function createPopup(imageUrl) {
         popup.remove();
         popup = null;
     });
+    
+    // 给生成的主图添加点击全屏预览
+    const mainImage = popup.querySelector('#main-generated-image');
+    if (mainImage) {
+        mainImage.addEventListener('click', () => {
+            // 创建遮罩层
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.zIndex = '9999';
+
+            // 创建放大图片
+            const fullscreenImg = document.createElement('img');
+            fullscreenImg.src = mainImage.src;
+            fullscreenImg.style.maxWidth = '90%';
+            fullscreenImg.style.maxHeight = '90%';
+            fullscreenImg.style.borderRadius = '6px';
+            fullscreenImg.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+
+            // 创建关闭按钮
+            const closeBtn = document.createElement('span');
+            closeBtn.textContent = '×';
+            closeBtn.style.position = 'absolute';
+            closeBtn.style.top = '20px';
+            closeBtn.style.right = '30px';
+            closeBtn.style.fontSize = '40px';
+            closeBtn.style.fontWeight = 'bold';
+            closeBtn.style.color = '#fff';
+            closeBtn.style.cursor = 'pointer';
+
+            closeBtn.addEventListener('click', () => {
+                overlay.remove();
+            });
+
+            overlay.appendChild(fullscreenImg);
+            overlay.appendChild(closeBtn);
+            document.body.appendChild(overlay);
+        });
+    }
 
     return popup;
 }

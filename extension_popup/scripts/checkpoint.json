@@ -1,0 +1,16 @@
+[
+    {
+        "CheckpointName": "Qwen_Image_v1",
+        "checkpointModelVersionId": 275167,
+        "checkpointShowInfo": "Qwen_Image_v1.safetensors",
+        "numInferenceSteps": 50,
+        "guidanceScale": 4
+    },
+    {
+        "CheckpointName": "造相-Z-Image-Turbo_master",
+        "checkpointModelVersionId": 469191,
+        "checkpointShowInfo": "造相-Z-Image-Turbo_master.safetensors",
+        "numInferenceSteps": 9,
+        "guidanceScale": 2.5
+    }
+]

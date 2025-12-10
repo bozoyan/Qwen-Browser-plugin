@@ -10,7 +10,7 @@ uploads/*
 !/uploads/
 comfyui_modelscope/config.json
 PIC/
-
+备份
 extension_yun/
 
 .DS_Store

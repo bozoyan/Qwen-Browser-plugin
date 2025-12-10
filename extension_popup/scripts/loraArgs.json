@@ -1,0 +1,32 @@
+[
+    {
+        "LoraName": "FEIFEI",
+        "modelVersionId": 310150,
+        "scale": 1
+    },
+    {
+        "LoraName": "FEIFEI_V2",
+        "modelVersionId": 313167,
+        "scale": 1
+    },
+    {
+        "LoraName": "GUA",
+        "modelVersionId": 332699,
+        "scale": 1
+    },
+    {
+        "LoraName": "GUA_V2",
+        "modelVersionId": 334516,
+        "scale": 1
+    },
+    {
+        "LoraName": "GUA_V8",
+        "modelVersionId": 346999,
+        "scale": 1
+    },
+    {
+        "LoraName": "GUA_V9",
+        "modelVersionId": 365553,
+        "scale": 1
+    }
+]

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "图片反推+魔搭生图",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "基于VL模型的图片内容分析与魔搭图片生成工具",
   "permissions": [
     "storage",

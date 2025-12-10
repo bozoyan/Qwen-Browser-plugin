@@ -1,10 +1,20 @@
-// 创建右键菜单
+// 创建右键菜单和设置侧边栏
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+
   chrome.contextMenus.create({
     id: "reverse-image-search",
     title: "反推这张图片",
     contexts: ["image"],
   });
+});
+
+// 设置侧边栏内容
+chrome.sidePanel.setOptions({
+  path: 'popup.html',
+  enabled: true
+}).catch(error => {
+  console.error('设置侧边栏选项失败:', error);
 });
 
 // 监听右键菜单点击事件
