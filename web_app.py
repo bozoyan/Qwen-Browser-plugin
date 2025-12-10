@@ -44,6 +44,13 @@ def create_app():
     def uploaded_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+    # 添加comfyui模型配置文件的静态服务
+    @app.route('/comfyui_modelscope/<path:filename>')
+    def comfyui_modelscope_file(filename):
+        # 构建comfyui_modelscope目录的路径
+        comfyui_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'comfyui_modelscope')
+        return send_from_directory(comfyui_dir, filename)
+
     return app
 
 

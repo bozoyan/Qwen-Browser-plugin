@@ -103,18 +103,22 @@ class APIManager {
     
     /**
      * 分析图片
-     * @param {string} filename - 文件名
+     * @param {string} imageUrl - 图片URL
      * @param {Object} settings - 设置参数
      * @returns {Promise<Object>} - 分析结果
      */
-    async analyzeImage(filename, settings) {
-        const url = `${this.baseUrl}${CONFIG.API.ENDPOINTS.ANALYZE}`;
-        
+    async analyzeImage(imageUrl, settings) {
+        const url = `${this.baseUrl}${CONFIG.API.ENDPOINTS.REVERSE_IMAGE}`;
+
         const requestData = {
-            filename: filename,
-            openai_api_key: settings.openaiKey
+            image_url: imageUrl
         };
-        
+
+        // 如果有OpenAI API Key，则添加到请求中
+        if (settings.openaiKey) {
+            requestData.openai_api_key = settings.openaiKey;
+        }
+
         return await this.request(url, {
             method: 'POST',
             body: JSON.stringify(requestData)
@@ -209,40 +213,44 @@ class APIManager {
      */
     async generateImage(prompt, settings) {
         const url = `${this.baseUrl}${CONFIG.API.ENDPOINTS.GENERATE}`;
-        const F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,妃妃,";
+        const F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,big boobs,妃妃,";
 
-        // 构建LoRA参数
-        const loraArgs = [];
+        // 构建LoRA参数 - 使用默认的LoRA如果用户没有选择
+        let loraArgs = CONFIG.DEFAULTS.LORA_ARGS || [{ modelVersionId: 310150, scale: 1 }];
+
+        // 如果用户选择了LoRA模型，则使用用户选择的
+        const userLoras = [];
         for (let i = 1; i <= 4; i++) {
             const loraKey = `lora${i}`;
             if (settings[loraKey] && settings[loraKey].modelVersionId) {
-                loraArgs.push({
+                userLoras.push({
                     modelVersionId: settings[loraKey].modelVersionId,
                     scale: settings[loraKey].scale || 1
                 });
             }
         }
+        if (userLoras.length > 0) {
+            loraArgs = userLoras;
+        }
 
         // 构建checkpoint参数
-        let checkpointArgs = {};
-        if (settings.checkpoint && settings.checkpoint.modelVersionId) {
-            checkpointArgs = {
-                checkpointModelVersionId: settings.checkpoint.modelVersionId,
-                checkpointShowInfo: settings.checkpoint.checkpointShowInfo || settings.checkpoint.CheckpointName
-            };
+        let checkpointModelVersionId = 275167; // 默认值
+        let checkpointShowInfo = "Qwen_Image_v1.safetensors"; // 默认值
+        let numInferenceSteps = 50; // 默认值
+        let guidanceScale = 4.0; // 默认值
+
+        if (settings.checkpoint && settings.checkpoint.checkpointModelVersionId) {
+            checkpointModelVersionId = settings.checkpoint.checkpointModelVersionId;
+            checkpointShowInfo = settings.checkpoint.checkpointShowInfo || settings.checkpoint.CheckpointName;
+            numInferenceSteps = settings.checkpoint.numInferenceSteps || 50;
+            guidanceScale = settings.checkpoint.guidanceScale || 4.0;
         }
 
         const requestData = {
             prompt: F_prompt + prompt,
-            model_scope_cookie: settings.modelScopeCookie,
-            width: settings.imageWidth,
-            height: settings.imageHeight,
-            num_images: settings.numImages || 4,
-            enable_hires: settings.enableHires !== false,
-            checkpoint: checkpointArgs,
-            lora_args: loraArgs.length > 0 ? loraArgs : CONFIG.DEFAULTS.LORA_ARGS,
-            num_inference_steps: settings.checkpoint?.numInferenceSteps || 50,
-            guidance_scale: settings.checkpoint?.guidanceScale || 4.0
+            cookie: settings.modelScopeCookie,
+            width: settings.imageWidth || CONFIG.DEFAULTS.IMAGE_WIDTH,
+            height: settings.imageHeight || CONFIG.DEFAULTS.IMAGE_HEIGHT
         };
 
         return await this.request(url, {
@@ -347,13 +355,16 @@ class APIManager {
     }
     
     /**
-     * 完整的图片处理流程
+     * 完整的图片处理流程（使用新的综合端点）
      * @param {File} file - 图片文件
      * @param {Object} settings - 设置参数
      * @param {Object} callbacks - 回调函数集合
      * @returns {Promise<Object>} - 处理结果
      */
     async processImage(file, settings, callbacks = {}) {
+        console.log('🚀 [API] 开始使用综合端点处理图片');
+        console.log('📁 [API] 图片文件:', file.name, file.size, file.type);
+
         const {
             onUploadProgress,
             onAnalyzeStart,
@@ -363,62 +374,122 @@ class APIManager {
             onGenerateComplete,
             onError
         } = callbacks;
-        
+
         try {
-            // 1. 上传文件
-            const uploadResult = await this.uploadFile(file, onUploadProgress);
-            
-            if (!uploadResult.success) {
-                throw new Error(uploadResult.error || CONFIG.ERRORS.UPLOAD_FAILED);
-            }
-            
-            // 2. 分析图片
-            if (onAnalyzeStart) {
-                onAnalyzeStart();
-            }
-            
-            const analyzeResult = await this.analyzeImage(uploadResult.filename, settings);
-            
-            if (!analyzeResult.success) {
-                throw new Error(analyzeResult.error || CONFIG.ERRORS.ANALYZE_FAILED);
-            }
-            
-            if (onAnalyzeComplete) {
-                onAnalyzeComplete(analyzeResult);
-            }
-            
-            // 3. 生成图片
-            if (onGenerateStart) {
-                onGenerateStart();
-            }
-            
-            const generateResult = await this.generateImage(analyzeResult.prompt, settings);
-            
-            if (!generateResult.success) {
-                throw new Error(generateResult.error || CONFIG.ERRORS.GENERATE_FAILED);
-            }
-            
-            // 4. 轮询生成状态
+            console.log('📡 [API] 调用综合端点:', `${this.baseUrl}${CONFIG.API.ENDPOINTS.PROCESS_COMPLETE}`);
+
+            // 创建FormData对象
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // 添加JSON数据部分
+            const jsonData = {
+                cookie: settings.modelScopeCookie,
+                width: settings.imageWidth || CONFIG.DEFAULTS.IMAGE_WIDTH,
+                height: settings.imageHeight || CONFIG.DEFAULTS.IMAGE_HEIGHT,
+                openai_api_key: settings.openaiKey
+            };
+            formData.append('json_data', JSON.stringify(jsonData));
+
+            console.log('📋 [API] 请求参数:', {
+                hasFile: true,
+                hasCookie: !!settings.modelScopeCookie,
+                imageSize: `${settings.imageWidth}x${settings.imageHeight}`,
+                hasOpenAIKey: !!settings.openaiKey
+            });
+
+            // 创建XMLHttpRequest来支持上传进度和长时间请求
             return new Promise((resolve, reject) => {
-                this.pollTaskStatus(
-                    generateResult.task_id,
-                    onGenerateProgress,
-                    (result) => {
-                        if (onGenerateComplete) {
-                            onGenerateComplete(result);
+                const xhr = new XMLHttpRequest();
+
+                // 监听上传进度
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable && onUploadProgress) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        onUploadProgress(percent);
+                        console.log(`📊 [API] 上传进度: ${percent}%`);
+                    }
+                });
+
+                // 监听响应
+                xhr.addEventListener('load', () => {
+                    console.log('📥 [API] 综合端点响应:', xhr.status);
+                    console.log('📄 [API] 响应内容:', xhr.responseText);
+
+                    try {
+                        if (xhr.status === 200) {
+                            const response = JSON.parse(xhr.responseText);
+
+                            if (response.success) {
+                                console.log('✅ [API] 综合处理成功');
+                                console.log(`📝 [API] 反推文字长度: ${response.prompt?.length || 0}`);
+                                console.log(`🖼️ [API] 生成图片数量: ${response.images?.length || 0}`);
+
+                                const result = {
+                                    success: true,
+                                    images: response.images,
+                                    prompt: response.prompt,
+                                    task_id: response.task_id
+                                };
+
+                                if (onGenerateComplete) {
+                                    onGenerateComplete(result);
+                                }
+
+                                resolve(result);
+                            } else {
+                                console.error('❌ [API] 综合处理失败:', response.error);
+                                if (onError) {
+                                    onError(new Error(response.error));
+                                }
+                                reject(new Error(response.error));
+                            }
+                        } else {
+                            console.error('❌ [API] HTTP错误:', xhr.status);
+                            if (onError) {
+                                onError(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+                            }
+                            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
                         }
-                        resolve(result);
-                    },
-                    (error) => {
+                    } catch (error) {
+                        console.error('❌ [API] 响应解析失败:', error);
                         if (onError) {
                             onError(error);
                         }
                         reject(error);
                     }
-                );
+                });
+
+                // 监听错误
+                xhr.addEventListener('error', () => {
+                    console.error('❌ [API] 网络错误');
+                    if (onError) {
+                        onError(new Error(CONFIG.ERRORS.NETWORK_ERROR));
+                    }
+                    reject(new Error(CONFIG.ERRORS.NETWORK_ERROR));
+                });
+
+                // 监听超时
+                xhr.addEventListener('timeout', () => {
+                    console.error('❌ [API] 请求超时');
+                    if (onError) {
+                        onError(new Error(CONFIG.ERRORS.TIMEOUT_ERROR));
+                    }
+                    reject(new Error(CONFIG.ERRORS.TIMEOUT_ERROR));
+                });
+
+                // 设置超时时间（5分钟，因为生成图片需要时间）
+                xhr.timeout = 300000;
+
+                // 发送请求
+                xhr.open('POST', `${this.baseUrl}${CONFIG.API.ENDPOINTS.PROCESS_COMPLETE}`);
+                xhr.send(formData);
+
+                console.log('🚀 [API] 请求已发送，等待响应...');
             });
-            
+
         } catch (error) {
+            console.error('💥 [API] 综合处理异常:', error);
             if (onError) {
                 onError(error);
             }

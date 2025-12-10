@@ -8,10 +8,12 @@ const CONFIG = {
         // API 端点
         ENDPOINTS: {
             UPLOAD: '/upload',
-            ANALYZE: '/analyze',
-            GENERATE: '/generate',
-            QUEUE_STATUS: '/queue_status',
-            RESULT: '/result'
+            ANALYZE: '/analyze_from_url',
+            GENERATE: '/api/generate_image',
+            REVERSE_IMAGE: '/reverse_image',
+            PROCESS_COMPLETE: '/process_image_complete',  // 新增的综合端点
+            POLL_TASK: '/poll_task',
+            TASK_STATUS: '/task_status'
         },
         
         // 请求超时时间 (毫秒)

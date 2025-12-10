@@ -179,89 +179,40 @@ class UIManager {
     
     /**
      * 处理分析按钮点击
+     * 注意：这个方法应该被popup.js中的handleAnalyze覆盖
+     * 这里保留作为后备，但不应该被调用
      */
     async handleAnalyze() {
         if (!this.currentImageData) {
             this.showToast('请先选择图片', 'warning');
             return;
         }
-        
+
         // 检查设置
         const settings = await this.getSettings();
         if (!settings.openaiKey) {
-            this.showToast(CONFIG.ERRORS.MISSING_API_KEY, 'error');
+            this.showToast('请先配置 OpenAI API Key', 'error');
             this.showSettings();
             return;
         }
-        
-        if (!settings.modelScopeCookie) {
-            this.showToast(CONFIG.ERRORS.MISSING_COOKIE, 'error');
-            this.showSettings();
-            return;
-        }
-        
-        try {
-            // 禁用按钮
-            this.elements.analyzeBtn.disabled = true;
-            this.elements.analyzeBtn.textContent = '处理中...';
-            
-            // 开始处理
-            await this.processImage();
-            
-        } catch (error) {
-            this.showToast('处理失败: ' + error.message, 'error');
 
-        } finally {
-            // 恢复按钮
-            this.elements.analyzeBtn.disabled = false;
-            this.elements.analyzeBtn.textContent = '反推并生成';
+        if (!settings.modelScopeCookie) {
+            this.showToast('请先配置 ModelScope Cookie', 'error');
+            this.showSettings();
+            return;
         }
+
+        // 不应该调用这个方法，让popup.js的处理逻辑接管
+        console.warn('[UI] UI.handleAnalyze被调用，应该使用popup.js的处理逻辑');
     }
     
     /**
-     * 处理图片
+     * 处理图片（已废弃，使用popup.js中的processImageWithRealAPI）
+     * @deprecated
      */
     async processImage() {
-        // 这里应该调用API类的方法
-        // 由于API类还没有实现，先模拟处理过程
-        
-
-        this.showUploadProgress(0);
-        
-        // 模拟上传进度
-        for (let i = 0; i <= 100; i += 10) {
-            await Utils.sleep(100);
-            this.showUploadProgress(i);
-        }
-        
-        this.hideUploadProgress();
-
-        
-        // 显示队列信息
-        this.showQueueInfo('正在分析图片内容...', 0);
-        
-        // 模拟分析过程
-        for (let i = 0; i <= 100; i += 5) {
-            await Utils.sleep(200);
-            this.updateQueueProgress(i);
-            
-            if (i === 50) {
-                this.updateQueueInfo('正在生成新图片...', i);
-            }
-        }
-        
-        // 模拟生成结果
-        this.hideQueueInfo();
-
-        
-        // 显示生成的图片（这里使用示例图片）
-        const mockImages = [
-            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7nlJ/miJDlm77niYcxPC90ZXh0Pjwvc3ZnPg==',
-            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjYWFhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7nlJ/miJDlm77niYcyPC90ZXh0Pjwvc3ZnPg==',
-            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNzc3Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7nlJ/miJDlm77niYczPC90ZXh0Pjwvc3ZnPg=='
-        ];
-        
-        this.showGeneratedImages(mockImages);
+        console.warn('[UI] processImage方法已废弃，请使用popup.js中的API处理逻辑');
+        // 这个方法不再使用，所有图片处理逻辑都移动到popup.js中
     }
     
     /**
@@ -417,7 +368,7 @@ class UIManager {
      * 处理主预览区域点击
      */
     handleMainPreviewClick() {
-        if (this.selectedThumbnail !== null && this.generatedImages[this.selectedThumbnail]) {
+        if (this.selectedThumbnail !== null && this.generatedImages && this.generatedImages[this.selectedThumbnail]) {
             // 创建图片放大模态窗口
             this.showImageModal(this.generatedImages[this.selectedThumbnail]);
         }

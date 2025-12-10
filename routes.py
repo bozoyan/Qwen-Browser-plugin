@@ -802,7 +802,7 @@ def reverse_image():
         temp_dir = current_app.config['UPLOAD_FOLDER']
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
-        
+
         # 从URL中提取文件名，如果无法提取则生成一个唯一的文件名
         filename = os.path.basename(image_url.split('?')[0])
         if not filename:
@@ -818,7 +818,7 @@ def reverse_image():
 
         # 图片下载成功后，调用analyze_image进行分析
         success, result = analyze_image(temp_image_path, api_key=current_app.config['OPENAI_API_KEY'])
-        
+
         # 分析完成后保留临时文件，用于reverse_image字段
         if success:
             return jsonify({
@@ -836,3 +836,255 @@ def reverse_image():
         if temp_image_path and os.path.exists(temp_image_path):
             os.remove(temp_image_path)
         return jsonify({'success': False, 'error': str(e)})
+
+@main_bp.route('/process_image_complete', methods=['POST'])
+def process_image_complete():
+    """
+    综合处理图片的完整流程：上传 -> 反推 -> 生成图片
+    仿照 /api/generate_image 的实现方式
+    """
+    print("=" * 80)
+    print("🚀 PROCESS_IMAGE_COMPLETE - 开始综合图片处理")
+    print("=" * 80)
+
+    try:
+        # 1. 获取上传的文件
+        if 'file' not in request.files:
+            print("❌ 没有文件被上传")
+            return jsonify({'success': False, 'error': '没有文件被上传'})
+
+        file = request.files['file']
+        if file.filename == '':
+            print("❌ 文件名为空")
+            return jsonify({'success': False, 'error': '文件名为空'})
+
+        print(f"📁 接收到文件: {file.filename}, 大小: {file.content_length}")
+
+        # 验证文件类型
+        if not allowed_file(file.filename):
+            print(f"❌ 不支持的文件类型: {file.filename}")
+            return jsonify({'success': False, 'error': f'不支持的文件类型: {file.filename}'})
+
+        # 2. 获取JSON数据（可能来自表单或请求体）
+        json_data = {}
+        if request.is_json:
+            json_data = request.get_json() or {}
+        else:
+            # 从表单字段获取JSON数据
+            json_data_str = request.form.get('json_data', '{}')
+            try:
+                json_data = json.loads(json_data_str)
+            except json.JSONDecodeError:
+                json_data = {}
+
+        # 获取参数
+        cookie = json_data.get('cookie', MODEL_SCOPE_COOKIE)
+        width = json_data.get('width', DEFAULT_WIDTH)
+        height = json_data.get('height', DEFAULT_HEIGHT)
+        openai_api_key = json_data.get('openai_api_key', current_app.config.get('OPENAI_API_KEY', ''))
+
+        print(f"📏 生成参数: {width}x{height}")
+        print(f"🍪 Cookie长度: {len(cookie) if cookie else 0}")
+        print(f"🔑 OpenAI Key长度: {len(openai_api_key) if openai_api_key else 0}")
+
+        if not cookie:
+            print("❌ 缺少ModelScope Cookie")
+            return jsonify({'success': False, 'error': '缺少ModelScope Cookie'})
+
+        # 保存上传的文件
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        print(f"✅ 文件已保存: {file_path}")
+
+        # 3. 分析图片
+        print("🔍 开始分析图片...")
+        try:
+            success, prompt = analyze_image(file_path, api_key=openai_api_key)
+            if not success:
+                print(f"❌ 图片分析失败: {prompt}")
+                return jsonify({'success': False, 'error': f'图片分析失败: {prompt}'})
+
+            print(f"✅ 图片分析成功，反推文字长度: {len(prompt)}")
+            print(f"📝 反推文字预览: {prompt[:100]}...")
+
+        except Exception as e:
+            print(f"❌ 图片分析异常: {str(e)}")
+            return jsonify({'success': False, 'error': f'图片分析异常: {str(e)}'})
+
+        # 4. 生成图片
+        print("🎨 开始生成图片...")
+        try:
+
+            # 构建请求参数 - 复用 /api/generate_image 的逻辑
+            api_url = 'https://www.modelscope.cn/api/v1/muse/predict/task/submit'
+            F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,big boobs,妃妃,"
+
+            request_body = {
+                'taskType': 'TXT_2_IMG',
+                'type': 'TXT_2_IMG',
+                'task_type': 'TXT_2_IMG',
+                'predictType': 'TXT_2_IMG',
+                'modelArgs': {
+                    'checkpointModelVersionId': 275167,
+                    'checkpointShowInfo': "Qwen_Image_v1.safetensors",
+                    'loraArgs': LORA_ARGS,
+                    'predictType': "TXT_2_IMG"
+                },
+                'promptArgs': {
+                    'prompt': F_prompt + prompt,
+                    'negativePrompt': ""
+                },
+                'basicDiffusionArgs': {
+                    'sampler': "Euler",
+                    'guidanceScale': 4,
+                    'seed': -1,
+                    'numInferenceSteps': 50,
+                    'numImagesPerPrompt': 4,
+                    'width': int(width),
+                    'height': int(height)
+                },
+                'advanced': False,
+                'addWaterMark': False,
+                'adetailerArgsMap': {},
+                'hiresFixFrontArgs': {
+                    'modelName': "Nomos 8k SCHATL 4x",
+                    "scale": 4
+                },
+                'controlNetFullArgs': []
+            }
+
+            # 提取CSRF Token
+            def extract_csrf_token_enhanced(cookie_str):
+                cookie_str = cookie_str.strip()
+                match = re.search(r'csrf_token=([^;]+)', cookie_str)
+                if match:
+                    token = match.group(1)
+                    return token.strip('"')
+                match = re.search(r'csrftoken=([^;]+)', cookie_str)
+                if match:
+                    return match.group(1).strip('"')
+                return ''
+
+            # 构建请求头
+            headers = {
+                'Content-Type': 'application/json',
+                'Cookie': cookie,
+                'X-Csrftoken': extract_csrf_token_enhanced(cookie),
+                'X-Modelscope-Trace-Id': str(uuid.uuid4()),
+                'X-Modelscope-Accept-Language': 'zh_CN',
+                'Referer': 'https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&presetId=5804',
+                'Origin': 'https://www.modelscope.cn',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+            }
+
+            print("📡 发送生成请求到ModelScope...")
+            response = requests.post(api_url, headers=headers, json=request_body, timeout=30)
+
+            if response.status_code != 200:
+                print(f"❌ ModelScope API请求失败: {response.status_code}")
+                print(f"📄 响应内容: {response.text}")
+                return jsonify({'success': False, 'error': f'ModelScope API请求失败: {response.status_code}'})
+
+            result = response.json()
+            print("✅ ModelScope API请求成功")
+
+            # 检查响应结果
+            if not result.get('Success'):
+                error_msg = result.get('Message', '未知错误')
+                print(f"❌ ModelScope返回错误: {error_msg}")
+                return jsonify({'success': False, 'error': f'ModelScope返回错误: {error_msg}'})
+
+            # 提取任务ID
+            task_id = None
+            if 'data' in result and result['data'] and 'taskId' in result['data']:
+                task_id = result['data']['taskId']
+            elif 'Data' in result and result['Data'] and 'data' in result['Data'] and result['Data']['data'] and 'taskId' in result['Data']['data']:
+                task_id = result['Data']['data']['taskId']
+
+            if not task_id:
+                print("❌ 无法获取任务ID")
+                return jsonify({'success': False, 'error': '无法获取任务ID'})
+
+            print(f"🎯 获取到任务ID: {task_id}")
+
+            # 4. 轮询任务状态
+            print("🔄 开始轮询任务状态...")
+            import time
+            base_poll_url = 'https://www.modelscope.cn/api/v1/muse/predict/task/status'
+            max_retries = 60
+            retry_interval = 3
+
+            poll_headers = {
+                'Accept': 'application/json, text/plain, */*',
+                'Cookie': cookie,
+                'Referer': 'https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&presetId=5804',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+            }
+
+            images = []
+            for i in range(max_retries):
+                time.sleep(retry_interval)
+                print(f"🔍 第{i+1}/{max_retries}次查询任务状态")
+
+                try:
+                    poll_url = f'{base_poll_url}?taskId={task_id}'
+                    poll_response = requests.get(poll_url, headers=poll_headers, timeout=10)
+
+                    if poll_response.status_code != 200:
+                        print(f"❌ 轮询请求失败: {poll_response.status_code}")
+                        continue
+
+                    response_json = poll_response.json()
+
+                    if response_json.get('Success') and response_json.get('Data'):
+                        task_data = response_json['Data'].get('data', {})
+                        status = task_data.get('status', '')
+
+                        if status == 'COMPLETED':
+                            print("🎉 任务完成！")
+                            if task_data.get('predictResult') and isinstance(task_data['predictResult'], dict):
+                                predict_result = task_data['predictResult']
+                                if predict_result.get('images') and isinstance(predict_result['images'], list):
+                                    images = [item.get('imageUrl') for item in predict_result['images'] if item and item.get('imageUrl')]
+                                    print(f"✅ 获取到{len(images)}张图片")
+                                    break
+                        elif status == 'FAILED':
+                            error_msg = task_data.get('errorMsg', '未知错误')
+                            print(f"❌ 任务失败: {error_msg}")
+                            return jsonify({'success': False, 'error': f'图片生成失败: {error_msg}'})
+                        else:
+                            progress = task_data.get('progress', {})
+                            percent = progress.get('percent', 0)
+                            detail = progress.get('detail', '正在处理中...')
+                            print(f"⏳ 任务状态: {status}, 进度: {percent}%, 详情: {detail}")
+
+                except Exception as e:
+                    print(f"❌ 轮询异常: {str(e)}")
+                    continue
+
+            if not images:
+                print("❌ 轮询超时，未获取到图片")
+                return jsonify({'success': False, 'error': '轮询超时，未获取到图片'})
+
+            # 5. 返回最终结果
+            result = {
+                'success': True,
+                'prompt': prompt,
+                'images': images,
+                'task_id': task_id
+            }
+
+            print("🎉 综合处理完成！")
+            print(f"📝 反推文字长度: {len(prompt)}")
+            print(f"🖼️ 生成图片数量: {len(images)}")
+
+            return jsonify(result)
+
+        except Exception as e:
+            print(f"❌ 图片生成异常: {str(e)}")
+            return jsonify({'success': False, 'error': f'图片生成异常: {str(e)}'})
+
+    except Exception as e:
+        print(f"❌ 综合处理异常: {str(e)}")
+        return jsonify({'success': False, 'error': f'综合处理异常: {str(e)}'})
