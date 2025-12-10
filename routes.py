@@ -1075,6 +1075,10 @@ def process_image_complete():
             }
 
             print("📡 发送生成请求到ModelScope...")
+            print(f"🌐 请求URL: {api_url}")
+            print(f"🔐 CSRF Token: {extract_csrf_token_enhanced(cookie)}")
+            print(f"📋 请求头包含: {list(headers.keys())}")
+
             response = requests.post(api_url, headers=headers, json=request_body, timeout=30)
 
             if response.status_code != 200:
@@ -1084,6 +1088,7 @@ def process_image_complete():
 
             result = response.json()
             print("✅ ModelScope API请求成功")
+            print(f"📄 完整响应内容: {json.dumps(result, indent=2, ensure_ascii=False)}")
 
             # 检查响应结果
             if not result.get('Success'):
@@ -1091,15 +1096,95 @@ def process_image_complete():
                 print(f"❌ ModelScope返回错误: {error_msg}")
                 return jsonify({'success': False, 'error': f'ModelScope返回错误: {error_msg}'})
 
-            # 提取任务ID
+            # 提取任务ID - 尝试多种可能的响应结构
             task_id = None
-            if 'data' in result and result['data'] and 'taskId' in result['data']:
-                task_id = result['data']['taskId']
-            elif 'Data' in result and result['Data'] and 'data' in result['Data'] and result['Data']['data'] and 'taskId' in result['Data']['data']:
-                task_id = result['Data']['data']['taskId']
+
+            # 尝试结构1: result.data.taskId
+            if 'data' in result and result['data'] and isinstance(result['data'], dict):
+                task_id = result['data'].get('taskId')
+                if task_id:
+                    print(f"🎯 从 result.data.taskId 获取任务ID: {task_id}")
+
+            # 尝试结构2: result.Data.data.taskId
+            if not task_id and 'Data' in result and isinstance(result['Data'], dict):
+                if 'data' in result['Data'] and isinstance(result['Data']['data'], dict):
+                    task_id = result['Data']['data'].get('taskId')
+                    if task_id:
+                        print(f"🎯 从 result.Data.data.taskId 获取任务ID: {task_id}")
+                # 尝试直接从 result.Data 获取 taskId
+                elif result['Data'].get('taskId'):
+                    task_id = result['Data'].get('taskId')
+                    if task_id:
+                        print(f"🎯 从 result.Data.taskId 获取任务ID: {task_id}")
+                # 尝试从 result.Data.get('requestId') 获取
+                elif result['Data'].get('requestId'):
+                    task_id = result['Data'].get('requestId')
+                    if task_id:
+                        print(f"🎯 从 result.Data.requestId 获取任务ID: {task_id}")
+
+            # 尝试结构3: 直接在result中找taskId
+            if not task_id:
+                task_id = result.get('taskId')
+                if task_id:
+                    print(f"🎯 从 result.taskId 获取任务ID: {task_id}")
+
+            # 尝试结构4: 检查所有可能的键
+            if not task_id:
+                print("🔍 搜索所有可能的任务ID字段...")
+                def find_task_id(obj, path=""):
+                    if isinstance(obj, dict):
+                        for key, value in obj.items():
+                            current_path = f"{path}.{key}" if path else key
+                            # 搜索可能的ID字段
+                            if key.lower() in ['taskid', 'task_id', 'id'] and value:
+                                print(f"🎯 找到可能的任务ID字段: {current_path} = {value}")
+                                return value
+                            # 搜索可能是ID的字符串字段
+                            if isinstance(value, str) and len(value) > 5:
+                                # 检查是否看起来像ID（包含数字、字母组合）
+                                if any(c.isdigit() for c in value) and len(value) < 50:
+                                    if 'request' in key.lower() or 'id' in key.lower() or key.lower() == 'code':
+                                        print(f"🎯 找到可能的ID字段: {current_path} = {value}")
+                                        return value
+                            found = find_task_id(value, current_path)
+                            if found:
+                                return found
+                    elif isinstance(obj, list):
+                        for i, item in enumerate(obj):
+                            found = find_task_id(item, f"{path}[{i}]")
+                            if found:
+                                return found
+                    return None
+
+                task_id = find_task_id(result)
 
             if not task_id:
                 print("❌ 无法获取任务ID")
+                print(f"🔍 响应结构分析:")
+                print(f"   Success: {result.get('Success')}")
+                print(f"   Message: {result.get('Message')}")
+                print(f"   数据键: {list(result.keys())}")
+
+                # 显示可能的数据结构
+                if 'Data' in result:
+                    print(f"   Data类型: {type(result['Data'])}")
+                    if isinstance(result['Data'], dict):
+                        print(f"   Data键: {list(result['Data'].keys())}")
+                        print(f"   Data内容: {result['Data']}")
+                        if 'data' in result['Data']:
+                            print(f"   Data.data类型: {type(result['Data']['data'])}")
+                            print(f"   Data.data内容: {result['Data']['data']}")
+                            if isinstance(result['Data']['data'], dict):
+                                print(f"   Data.data键: {list(result['Data']['data'].keys())}")
+                        else:
+                            print("   🔍 检查其他可能的字段:")
+                            for key in result['Data'].keys():
+                                value = result['Data'][key]
+                                if value and isinstance(value, str) and len(value) > 10:
+                                    print(f"      {key}: {value} (可能是ID)")
+                                elif isinstance(value, dict):
+                                    print(f"      {key}: {list(value.keys())} (字典)")
+
                 return jsonify({'success': False, 'error': '无法获取任务ID'})
 
             print(f"🎯 获取到任务ID: {task_id}")
