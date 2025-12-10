@@ -55,13 +55,13 @@ def analyze():
         success, result = analyze_image(image_path, api_key=current_app.config['OPENAI_API_KEY'])
         if success:
             # 分析完成后再删除临时文件
-            if os.path.exists(temp_image_path):
-                os.remove(temp_image_path)
+            if os.path.exists(image_path):
+                os.remove(image_path)
             return jsonify({'success': True, 'prompt': result})
         else:
             # 分析失败也要删除临时文件
-            if os.path.exists(temp_image_path):
-                os.remove(temp_image_path)
+            if os.path.exists(image_path):
+                os.remove(image_path)
             return jsonify({'success': False, 'error': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -1014,6 +1014,8 @@ def process_image_complete():
             base_poll_url = 'https://www.modelscope.cn/api/v1/muse/predict/task/status'
             max_retries = 60
             retry_interval = 3
+            max_consecutive_errors = 3  # 最大连续异常次数
+            consecutive_errors = 0     # 当前连续异常次数
 
             poll_headers = {
                 'Accept': 'application/json, text/plain, */*',
@@ -1033,6 +1035,10 @@ def process_image_complete():
 
                     if poll_response.status_code != 200:
                         print(f"❌ 轮询请求失败: {poll_response.status_code}")
+                        consecutive_errors += 1
+                        if consecutive_errors >= max_consecutive_errors:
+                            print(f"💥 连续{max_consecutive_errors}次请求失败，停止轮询")
+                            break
                         continue
 
                     response_json = poll_response.json()
@@ -1043,22 +1049,49 @@ def process_image_complete():
                         # 检查task_data是否有效
                         if not task_data:
                             print(f"⚠️ 获取到空的task_data，继续轮询...")
+                            consecutive_errors += 1
+                            if consecutive_errors >= max_consecutive_errors:
+                                print(f"💥 连续{max_consecutive_errors}次获取空数据，停止轮询")
+                                break
                             continue
 
+                        # 重置异常计数
+                        consecutive_errors = 0
                         status = task_data.get('status', '')
 
                         if status == 'COMPLETED':
-                            print("🎉 任务完成！")
+                            print("🎉 任务完成！获取结果...")
+
+                            # 提取图片URL - 适配新的响应结构（参考第443行的正确实现）
+                            images = []
+
+                            # 新结构：从predictResult.images中提取
                             if task_data.get('predictResult') and isinstance(task_data['predictResult'], dict):
                                 predict_result = task_data['predictResult']
+
                                 if predict_result.get('images') and isinstance(predict_result['images'], list):
-                                    images = [item.get('imageUrl') for item in predict_result['images'] if item and item.get('imageUrl')]
-                                    print(f"✅ 获取到{len(images)}张图片")
+                                    images_data = predict_result['images']
+                                    if isinstance(images_data, list):
+                                        images = [item.get('imageUrl') for item in images_data if item and item.get('imageUrl')]
+                                        print(f"✅ 从新结构获取到{len(images)}张图片")
+                                        if images:
+                                            break
+
+                                # 旧的兼容性处理
+                                elif predict_result.get('results') and isinstance(predict_result['results'], list):
+                                    images = [item.get('url') for item in predict_result['results'] if item and item.get('url')]
+                                    print(f"✅ 从旧结构获取到{len(images)}张图片")
+                                    if images:
+                                        break
+                            elif isinstance(task_data.get('predictResult'), list):
+                                images = [item.get('url') for item in task_data['predictResult'] if item and item.get('url')]
+                                print(f"✅ 从列表结构获取到{len(images)}张图片")
+                                if images:
                                     break
-                                else:
-                                    print("⚠️ predictResult中未找到有效的images数组")
-                            else:
-                                print(f"⚠️ predictResult格式异常: {task_data.get('predictResult')}")
+
+                            if not images:
+                                print("⚠️ 未能提取图片URL，响应结构可能已更改")
+                                print(f"   predictResult结构: {task_data.get('predictResult')}")
                         elif status == 'FAILED':
                             error_msg = task_data.get('errorMsg', '未知错误')
                             print(f"❌ 任务失败: {error_msg}")
@@ -1071,7 +1104,16 @@ def process_image_complete():
 
                 except Exception as e:
                     print(f"❌ 轮询异常: {str(e)}")
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_consecutive_errors:
+                        print(f"💥 连续{max_consecutive_errors}次轮询异常，停止轮询")
+                        break
                     continue
+
+            # 检查是否因连续异常而退出
+            if consecutive_errors >= max_consecutive_errors:
+                print("❌ 因连续异常超过阈值，停止图片生成")
+                return jsonify({'success': False, 'error': f'轮询异常超限，连续{max_consecutive_errors}次异常'})
 
             if not images:
                 print("❌ 轮询超时，未获取到图片")

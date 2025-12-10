@@ -6,6 +6,7 @@ class APIManager {
         this.pollInterval = CONFIG.API.POLL_INTERVAL;
         this.currentTaskId = null;
         this.currentRequest = null;
+        this.isCancelled = false;
     }
     
     /**
@@ -353,6 +354,7 @@ class APIManager {
      */
     cancelCurrentTask() {
         console.log('🛑 [API] 取消当前任务');
+        this.isCancelled = true;
         this.currentTaskId = null;
 
         // 如果有正在进行的请求，取消它
@@ -383,6 +385,9 @@ class APIManager {
             onGenerateComplete,
             onError
         } = callbacks;
+
+        // 重置取消状态
+        this.isCancelled = false;
 
         try {
             console.log('📡 [API] 调用综合端点:', `${this.baseUrl}${CONFIG.API.ENDPOINTS.PROCESS_COMPLETE}`);
@@ -430,6 +435,13 @@ class APIManager {
 
                     // 清理当前请求引用
                     this.currentRequest = null;
+
+                    // 检查是否已被取消
+                    if (this.isCancelled) {
+                        console.log('🚫 [API] 请求已完成但任务已被取消');
+                        reject(new Error('任务已取消'));
+                        return;
+                    }
 
                     try {
                         if (xhr.status === 200) {
