@@ -1096,37 +1096,56 @@ def process_image_complete():
                 print(f"❌ ModelScope返回错误: {error_msg}")
                 return jsonify({'success': False, 'error': f'ModelScope返回错误: {error_msg}'})
 
-            # 提取任务ID - 尝试多种可能的响应结构
+            # 提取任务ID - 优先查找数字格式的taskId
             task_id = None
 
-            # 尝试结构1: result.data.taskId
+            # 尝试结构1: result.data.taskId (数字格式)
             if 'data' in result and result['data'] and isinstance(result['data'], dict):
-                task_id = result['data'].get('taskId')
-                if task_id:
-                    print(f"🎯 从 result.data.taskId 获取任务ID: {task_id}")
+                potential_id = result['data'].get('taskId')
+                if potential_id and str(potential_id).isdigit():
+                    task_id = str(potential_id)
+                    print(f"🎯 从 result.data.taskId 获取数字格式任务ID: {task_id}")
 
-            # 尝试结构2: result.Data.data.taskId
+            # 尝试结构2: result.Data.data.taskId (数字格式)
             if not task_id and 'Data' in result and isinstance(result['Data'], dict):
                 if 'data' in result['Data'] and isinstance(result['Data']['data'], dict):
-                    task_id = result['Data']['data'].get('taskId')
-                    if task_id:
-                        print(f"🎯 从 result.Data.data.taskId 获取任务ID: {task_id}")
-                # 尝试直接从 result.Data 获取 taskId
-                elif result['Data'].get('taskId'):
-                    task_id = result['Data'].get('taskId')
-                    if task_id:
-                        print(f"🎯 从 result.Data.taskId 获取任务ID: {task_id}")
-                # 尝试从 result.Data.get('requestId') 获取
-                elif result['Data'].get('requestId'):
-                    task_id = result['Data'].get('requestId')
-                    if task_id:
-                        print(f"🎯 从 result.Data.requestId 获取任务ID: {task_id}")
+                    potential_id = result['Data']['data'].get('taskId')
+                    if potential_id and str(potential_id).isdigit():
+                        task_id = str(potential_id)
+                        print(f"🎯 从 result.Data.data.taskId 获取数字格式任务ID: {task_id}")
 
-            # 尝试结构3: 直接在result中找taskId
+            # 尝试结构3: 直接在result中找taskId (数字格式)
             if not task_id:
-                task_id = result.get('taskId')
-                if task_id:
-                    print(f"🎯 从 result.taskId 获取任务ID: {task_id}")
+                potential_id = result.get('taskId')
+                if potential_id and str(potential_id).isdigit():
+                    task_id = str(potential_id)
+                    print(f"🎯 从 result.taskId 获取数字格式任务ID: {task_id}")
+
+            # 尝试结构4: 直接在result.Data中找taskId (数字格式)
+            if not task_id and 'Data' in result and isinstance(result['Data'], dict):
+                potential_id = result['Data'].get('taskId')
+                if potential_id and str(potential_id).isdigit():
+                    task_id = str(potential_id)
+                    print(f"🎯 从 result.Data.taskId 获取数字格式任务ID: {task_id}")
+
+            # 只有在没有找到数字格式taskId时，才查找UUID格式的requestId
+            if not task_id:
+                print("🔍 未找到数字格式的taskId，尝试查找UUID格式的requestId...")
+
+                # 尝试结构5: result.Data.requestId (UUID格式 - 备用)
+                if 'Data' in result and isinstance(result['Data'], dict):
+                    potential_id = result['Data'].get('requestId')
+                    if potential_id:
+                        task_id = potential_id
+                        print(f"⚠️ 使用UUID格式的requestId作为备用: {task_id}")
+                        print(f"🔍 注意: UUID格式的ID可能不被轮询API支持")
+
+                # 尝试结构6: 直接在result中找requestId
+                if not task_id:
+                    potential_id = result.get('requestId')
+                    if potential_id:
+                        task_id = potential_id
+                        print(f"⚠️ 使用UUID格式的requestId: {task_id}")
 
             # 尝试结构4: 检查所有可能的键
             if not task_id:
@@ -1189,6 +1208,40 @@ def process_image_complete():
 
             print(f"🎯 获取到任务ID: {task_id}")
 
+            # 检查任务ID格式
+            if task_id and isinstance(task_id, str) and '-' in task_id:
+                print(f"⚠️ 警告: 检测到UUID格式的任务ID ({task_id})，轮询API可能需要数字格式")
+                print(f"🔍 搜索完整的响应，寻找数字格式的taskId...")
+
+                # 再次搜索完整响应，寻找数字格式的ID
+                def find_numeric_task_id(obj, path=""):
+                    if isinstance(obj, dict):
+                        for key, value in obj.items():
+                            current_path = f"{path}.{key}" if path else key
+                            if key.lower() in ['taskid', 'task_id'] and value:
+                                if isinstance(value, (int, str)) and str(value).isdigit():
+                                    print(f"🎯 找到数字格式的任务ID: {current_path} = {value}")
+                                    return str(value)
+                            found = find_numeric_task_id(value, current_path)
+                            if found:
+                                return found
+                    elif isinstance(obj, list):
+                        for i, item in enumerate(obj):
+                            found = find_numeric_task_id(item, f"{path}[{i}]")
+                            if found:
+                                return found
+                    return None
+
+                numeric_task_id = find_numeric_task_id(result)
+                if numeric_task_id:
+                    print(f"✅ 找到数字格式的任务ID，使用: {numeric_task_id}")
+                    task_id = numeric_task_id
+                else:
+                    print(f"❌ 未找到数字格式的任务ID，可能需要调整API调用方式")
+                    # 尝试使用其他方法获取数字ID
+                    print(f"🔍 尝试从完整响应中提取所有数字字段...")
+                    print(f"📄 完整响应: {json.dumps(result, indent=2, ensure_ascii=False)}")
+
             # 4. 轮询任务状态
             print("🔄 开始轮询任务状态...")
             import time
@@ -1232,9 +1285,19 @@ def process_image_complete():
                             task_data = response_json['Data']['data']
                         else:
                             print(f"⚠️ Data.data结构异常: {response_json.get('Data')}")
+
+                            # 检查是否有错误信息表明使用了错误的ID格式
+                            error_msg = response_json.get('Data', {}).get('message', '')
+                            if 'NumberFormatException' in error_msg and 'String\' to required type \'Long\'' in error_msg:
+                                print(f"❌ 检测到ID格式错误: UUID格式无法转换为数字格式")
+                                print(f"🔄 UUID格式的taskId不被支持，需要数字格式的taskId")
+                                print(f"🔍 ModelScope API可能需要不同的端点或参数格式")
+                                print(f"📋 当前使用的是标准轮询端点，可能需要调整API调用方式")
+
                             consecutive_errors += 1
                             if consecutive_errors >= max_consecutive_errors:
                                 print(f"💥 连续{max_consecutive_errors}次数据结构异常，停止轮询")
+                                print(f"💡 建议: 检查ModelScope API文档，确认正确的轮询方式")
                                 break
                             continue
 
