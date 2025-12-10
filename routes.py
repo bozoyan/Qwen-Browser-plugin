@@ -906,7 +906,7 @@ def process_image_complete():
                 return jsonify({'success': False, 'error': f'图片分析失败: {prompt}'})
 
             print(f"✅ 图片分析成功，反推文字长度: {len(prompt)}")
-            print(f"📝 反推文字预览: {prompt[:100]}...")
+            print(f"📝 反推文字预览: {prompt[:1000]}...")
 
         except Exception as e:
             print(f"❌ 图片分析异常: {str(e)}")
@@ -1043,8 +1043,19 @@ def process_image_complete():
 
                     response_json = poll_response.json()
 
-                    if response_json.get('Success') and response_json.get('Data'):
-                        task_data = response_json['Data'].get('data', {})
+                    # 适配ModelScope的实际响应结构
+                    # 实际响应结构：{"Code":200,"Data":{"data":{...}},"Success":true}
+                    if (response_json.get('Success') == True and response_json.get('Code') == 200) and response_json.get('Data'):
+
+                        if isinstance(response_json['Data'], dict) and response_json['Data'].get('data'):
+                            task_data = response_json['Data']['data']
+                        else:
+                            print(f"⚠️ Data.data结构异常: {response_json.get('Data')}")
+                            consecutive_errors += 1
+                            if consecutive_errors >= max_consecutive_errors:
+                                print(f"💥 连续{max_consecutive_errors}次数据结构异常，停止轮询")
+                                break
+                            continue
 
                         # 检查task_data是否有效
                         if not task_data:
@@ -1059,28 +1070,41 @@ def process_image_complete():
                         consecutive_errors = 0
                         status = task_data.get('status', '')
 
-                        if status == 'COMPLETED':
+                        # 适配实际状态值：SUCCEED 而不是 COMPLETED
+                        if status == 'SUCCEED' or status == 'COMPLETED':
                             print("🎉 任务完成！获取结果...")
 
                             # 提取图片URL - 适配新的响应结构（参考第443行的正确实现）
                             images = []
 
-                            # 新结构：从predictResult.images中提取
+                            # 基于实际响应结构提取图片URL
                             if task_data.get('predictResult') and isinstance(task_data['predictResult'], dict):
                                 predict_result = task_data['predictResult']
 
+                                # 根据实际响应结构：predictResult.images[].imageUrl
                                 if predict_result.get('images') and isinstance(predict_result['images'], list):
                                     images_data = predict_result['images']
                                     if isinstance(images_data, list):
-                                        images = [item.get('imageUrl') for item in images_data if item and item.get('imageUrl')]
-                                        print(f"✅ 从新结构获取到{len(images)}张图片")
+                                        images = []
+                                        for item in images_data:
+                                            if item and isinstance(item, dict) and item.get('imageUrl'):
+                                                images.append(item['imageUrl'])
+
+                                        print(f"✅ 从ModelScope新结构获取到{len(images)}张图片")
+                                        for i, img_url in enumerate(images, 1):
+                                            print(f"   图片{i}: {img_url}")
+
                                         if images:
                                             break
+                                    else:
+                                        print("⚠️ images不是有效的列表格式")
+                                else:
+                                    print("⚠️ predictResult中未找到images数组")
 
-                                # 旧的兼容性处理
-                                elif predict_result.get('results') and isinstance(predict_result['results'], list):
+                                # 兼容性处理
+                                if not images and predict_result.get('results') and isinstance(predict_result['results'], list):
                                     images = [item.get('url') for item in predict_result['results'] if item and item.get('url')]
-                                    print(f"✅ 从旧结构获取到{len(images)}张图片")
+                                    print(f"✅ 从兼容结构获取到{len(images)}张图片")
                                     if images:
                                         break
                             elif isinstance(task_data.get('predictResult'), list):
@@ -1090,17 +1114,33 @@ def process_image_complete():
                                     break
 
                             if not images:
-                                print("⚠️ 未能提取图片URL，响应结构可能已更改")
-                                print(f"   predictResult结构: {task_data.get('predictResult')}")
-                        elif status == 'FAILED':
-                            error_msg = task_data.get('errorMsg', '未知错误')
+                                print("⚠️ 未能提取图片URL，分析响应结构...")
+                                print(f"   predictResult类型: {type(task_data.get('predictResult'))}")
+                                print(f"   predictResult内容: {task_data.get('predictResult')}")
+                                print(f"   完整task_data结构: {task_data}")
+                        elif status == 'FAILED' or status == 'ERROR' or status == 'CANCELLED':
+                            error_msg = task_data.get('errorMsg', task_data.get('message', '未知错误'))
                             print(f"❌ 任务失败: {error_msg}")
                             return jsonify({'success': False, 'error': f'图片生成失败: {error_msg}'})
                         else:
+                            # 处理正在进行的任务状态
                             progress = task_data.get('progress', {})
                             percent = progress.get('percent', 0)
-                            detail = progress.get('detail', '正在处理中...')
-                            print(f"⏳ 任务状态: {status}, 进度: {percent}%, 详情: {detail}")
+
+                            # 根据不同的状态提供更详细的进度信息
+                            status_messages = {
+                                'PENDING': '等待中...',
+                                'RUNNING': '正在处理...',
+                                'PROCESSING': '生成中...',
+                                'QUEUED': '排队中...',
+                                'SUBMITTING': '提交中...'
+                            }
+
+                            status_detail = status_messages.get(status, f'状态: {status}')
+                            if percent > 0:
+                                print(f"⏳ 任务状态: {status_detail} 进度: {percent}%")
+                            else:
+                                print(f"⏳ 任务状态: {status_detail}")
 
                 except Exception as e:
                     print(f"❌ 轮询异常: {str(e)}")
