@@ -396,13 +396,39 @@ class APIManager {
             const formData = new FormData();
             formData.append('file', file);
 
-            // 添加JSON数据部分
+            // 添加完整的JSON数据部分
             const jsonData = {
                 cookie: settings.modelScopeCookie,
                 width: settings.imageWidth || CONFIG.DEFAULTS.IMAGE_WIDTH,
                 height: settings.imageHeight || CONFIG.DEFAULTS.IMAGE_HEIGHT,
-                openai_api_key: settings.openaiKey
+                num_images: settings.numImages || 4,
+                enable_hires: settings.enableHires !== undefined ? settings.enableHires : true,
+                openai_api_key: settings.openaiKey,
+                checkpoint: settings.checkpoint || '',
+                lora1: settings.lora1 || '',
+                lora2: settings.lora2 || '',
+                lora3: settings.lora3 || '',
+                lora4: settings.lora4 || ''
             };
+
+            console.log('📋 [API] 发送的文件信息:', {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                hasFile: !!file
+            });
+
+            console.log('🔧 [API] 发送的完整参数:', {
+                width: jsonData.width,
+                height: jsonData.height,
+                num_images: jsonData.num_images,
+                enable_hires: jsonData.enable_hires,
+                checkpoint: jsonData.checkpoint,
+                lora1: jsonData.lora1,
+                lora2: jsonData.lora2,
+                lora3: jsonData.lora3,
+                lora4: jsonData.lora4
+            });
             formData.append('json_data', JSON.stringify(jsonData));
 
             console.log('📋 [API] 请求参数:', {

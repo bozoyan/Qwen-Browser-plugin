@@ -8,7 +8,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, session, current_app
 from werkzeug.utils import secure_filename
 from image_analyzer import analyze_image
-from config import ALLOWED_EXTENSIONS, MODEL_SCOPE_COOKIE, DEFAULT_WIDTH, DEFAULT_HEIGHT, LORA_ARGS, out_pic
+from config import ALLOWED_EXTENSIONS, MODEL_SCOPE_COOKIE, DEFAULT_WIDTH, DEFAULT_HEIGHT, LORA_ARGS, out_pic, model_info
 from utils import allowed_file, extract_csrf_token, generate_trace_id
 
 main_bp = Blueprint('main', __name__)
@@ -877,13 +877,24 @@ def process_image_complete():
             except json.JSONDecodeError:
                 json_data = {}
 
-        # 获取参数
+        # 获取自定义参数
         cookie = json_data.get('cookie', MODEL_SCOPE_COOKIE)
         width = json_data.get('width', DEFAULT_WIDTH)
         height = json_data.get('height', DEFAULT_HEIGHT)
+        num_images = json_data.get('num_images', 4)
+        enable_hires = json_data.get('enable_hires', True)
         openai_api_key = json_data.get('openai_api_key', current_app.config.get('OPENAI_API_KEY', ''))
 
-        print(f"📏 生成参数: {width}x{height}")
+        # 获取模型参数
+        checkpoint = json_data.get('checkpoint', '')
+        lora1 = json_data.get('lora1', '')
+        lora2 = json_data.get('lora2', '')
+        lora3 = json_data.get('lora3', '')
+        lora4 = json_data.get('lora4', '')
+
+        print(f"📏 生成参数: {width}x{height}, 数量: {num_images}")
+        print(f"🎨 模型设置: Checkpoint={checkpoint}")
+        print(f"🔗 LoRA设置: {lora1}, {lora2}, {lora3}, {lora4}")
         print(f"🍪 Cookie长度: {len(cookie) if cookie else 0}")
         print(f"🔑 OpenAI Key长度: {len(openai_api_key) if openai_api_key else 0}")
 
@@ -895,7 +906,18 @@ def process_image_complete():
         filename = secure_filename(file.filename)
         file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        print(f"✅ 文件已保存: {file_path}")
+
+        # 验证文件是否保存成功
+        if not os.path.exists(file_path):
+            print(f"❌ 文件保存失败: {file_path}")
+            return jsonify({'success': False, 'error': '文件保存失败'})
+
+        actual_size = os.path.getsize(file_path)
+        print(f"✅ 文件已保存: {file_path} (大小: {actual_size} bytes)")
+
+        if actual_size == 0:
+            print(f"❌ 文件大小为0，可能下载失败")
+            return jsonify({'success': False, 'error': '文件损坏或下载失败'})
 
         # 3. 分析图片
         print("🔍 开始分析图片...")
@@ -916,31 +938,98 @@ def process_image_complete():
         print("🎨 开始生成图片...")
         try:
 
-            # 构建请求参数 - 复用 /api/generate_image 的逻辑
+            # 构建自定义请求参数
             api_url = 'https://www.modelscope.cn/api/v1/muse/predict/task/submit'
-            F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,big boobs,妃妃,"
+
+            # 处理checkpoint参数（可能是字符串或字典）
+
+            # 构建LoRA参数
+            lora_args = {}
+            active_loras = []
+
+            # 处理LoRA参数（可能是字典或字符串）
+            lora_list = [lora1, lora2, lora3, lora4]
+            lora_scales = [1.0, 0.8, 0.6, 0.4]
+
+            for i, (lora, scale) in enumerate(zip(lora_list, lora_scales)):
+                if lora:
+                    if isinstance(lora, dict):
+                        # 如果是字典格式，直接提取信息
+                        lora_id = lora.get('modelVersionId')
+                        lora_name = lora.get('LoraName', f'LoRA_{i+1}')
+                        if lora_id:
+                            active_loras.append(lora_name)
+                            lora_args[lora_name] = scale
+                            print(f"🔗 [PROCESS] 从字典获取LoRA: Name={lora_name}, ID={lora_id}, Scale={scale}")
+                    elif isinstance(lora, str) and lora.strip():
+                        # 如果是字符串格式
+                        lora_name = lora.strip()
+                        active_loras.append(lora_name)
+                        lora_args[lora_name] = scale
+                        print(f"🔗 [PROCESS] 从字符串获取LoRA: Name={lora_name}, Scale={scale}")
+
+            print(f"🔧 [PROCESS] 构建自定义请求参数:")
+
+            # 获取checkpoint ID（如果选择了的话）
+            checkpoint_id = None
+            checkpoint_name = None
+
+            # 处理checkpoint参数（可能是字符串或字典）
+            if checkpoint:
+                if isinstance(checkpoint, dict):
+                    # 如果是字典格式，直接提取ID和名称
+                    checkpoint_id = checkpoint.get('checkpointModelVersionId')
+                    checkpoint_name = checkpoint.get('checkpointShowInfo', checkpoint.get('CheckpointName', ''))
+                    print(f"🎯 [PROCESS] 从字典获取checkpoint: ID={checkpoint_id}, Name={checkpoint_name}")
+                elif isinstance(checkpoint, str) and checkpoint.strip():
+                    # 如果是字符串格式，从model_info中查找
+                    checkpoint_name = checkpoint.strip()
+                    checkpoint_id = model_info.get(checkpoint_name, {}).get('id', None)
+                    print(f"🎯 [PROCESS] 从字符串获取checkpoint: Name={checkpoint_name}, ID={checkpoint_id}")
+                else:
+                    print(f"⚠️ [PROCESS] checkpoint格式异常: {checkpoint}")
+            else:
+                print("📝 [PROCESS] 未设置checkpoint，将使用默认模型")
+
+            # 构建模型参数
+            model_args = {
+                'predictType': 'TXT_2_IMG'
+            }
+
+            # 如果选择了checkpoint，添加到modelArgs
+            if checkpoint_id:
+                model_args['checkpointModelVersionId'] = checkpoint_id
+                if checkpoint_name:
+                    model_args['checkpointShowInfo'] = checkpoint_name
+
+            # 如果有LoRA，添加LoRA参数
+            if active_loras:
+                model_args['loraArgs'] = lora_args
+
+            print(f"🎯 [PROCESS] 参数处理完成:")
+            print(f"   Checkpoint: {checkpoint_name} (ID: {checkpoint_id})")
+            print(f"   Active LoRAs: {active_loras}")
+            print(f"   LoRA Args: {lora_args}")
+
+            # 构建基础提示词
+            base_prompt = "feifei, "  # 可以根据需要调整
 
             request_body = {
                 'taskType': 'TXT_2_IMG',
                 'type': 'TXT_2_IMG',
                 'task_type': 'TXT_2_IMG',
                 'predictType': 'TXT_2_IMG',
-                'modelArgs': {
-                    'checkpointModelVersionId': 275167,
-                    'checkpointShowInfo': "Qwen_Image_v1.safetensors",
-                    'loraArgs': LORA_ARGS,
-                    'predictType': "TXT_2_IMG"
-                },
+                'modelArgs': model_args,
                 'promptArgs': {
-                    'prompt': F_prompt + prompt,
-                    'negativePrompt': ""
+                    'prompt': base_prompt + prompt,
+                    'negativePrompt': "low quality, worst quality, blurry, watermark, signature"
                 },
                 'basicDiffusionArgs': {
                     'sampler': "Euler",
                     'guidanceScale': 4,
                     'seed': -1,
                     'numInferenceSteps': 50,
-                    'numImagesPerPrompt': 4,
+                    'numImagesPerPrompt': int(num_images),
                     'width': int(width),
                     'height': int(height)
                 },
@@ -953,6 +1042,13 @@ def process_image_complete():
                 },
                 'controlNetFullArgs': []
             }
+
+            print(f"🎯 [PROCESS] 最终请求体构建完成:")
+            print(f"   API URL: {api_url}")
+            print(f"   Task Type: {request_body['taskType']}")
+            print(f"   Prompt: {(request_body['promptArgs']['prompt'][:100] + '...') if len(request_body['promptArgs']['prompt']) > 100 else request_body['promptArgs']['prompt']}")
+            print(f"   Model Args: {json.dumps(request_body['modelArgs'], indent=2, ensure_ascii=False)}")
+            print(f"   Basic Diffusion Args: {json.dumps(request_body['basicDiffusionArgs'], indent=2, ensure_ascii=False)}")
 
             # 提取CSRF Token
             def extract_csrf_token_enhanced(cookie_str):

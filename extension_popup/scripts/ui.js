@@ -44,11 +44,6 @@ class UIManager {
             queueProgress: document.getElementById('queueProgress'),
             mainPreview: document.getElementById('mainPreview'),
             thumbnailsContainer: document.getElementById('thumbnailsContainer'),
-
-            // 反推文字预览
-            promptContent: document.getElementById('promptContent'),
-            promptText: document.getElementById('promptText'),
-            copyPromptBtn: document.getElementById('copyPromptBtn'),
             
 
             
@@ -104,9 +99,8 @@ class UIManager {
         this.elements.resetSettings.addEventListener('click', this.resetSettings.bind(this));
         this.elements.loadModels.addEventListener('click', this.loadModels.bind(this));
 
-        // 删除图片和复制按钮事件
+        // 删除图片事件
         this.elements.removeImageBtn.addEventListener('click', this.handleRemoveImage.bind(this));
-        this.elements.copyPromptBtn.addEventListener('click', this.handleCopyPrompt.bind(this));
 
         // 主预览区域点击事件
         this.elements.mainPreview.addEventListener('click', this.handleMainPreviewClick.bind(this));
@@ -168,9 +162,10 @@ class UIManager {
             // 显示图片预览
             const previewUrl = await Utils.createImagePreview(file);
             this.showImagePreview(previewUrl);
-            
+
             // 保存文件数据
             this.currentImageData = file;
+            this.currentFile = file;
             
             // 启用分析按钮
             this.elements.analyzeBtn.disabled = false;
@@ -894,12 +889,12 @@ class UIManager {
         }
 
         try {
-            this.showToast('正在加载图片...', 'info');
+            this.showToast('正在下载图片...', 'info');
 
             // 清除当前图片
             this.clearCurrentImage();
 
-            // 加载图片
+            // 下载图片到本地
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -910,9 +905,27 @@ class UIManager {
                 throw new Error('URL不是有效的图片格式');
             }
 
-            // 转换为base64
+            // 从URL中提取文件名
+            const urlFilename = url.split('/').pop().split('?')[0];
+            const timestamp = Date.now();
+            const filename = urlFilename && urlFilename.includes('.')
+                ? `url_${timestamp}_${urlFilename}`
+                : `url_image_${timestamp}.jpg`;
+
+            // 创建File对象
+            const file = new File([blob], filename, { type: blob.type });
+
+            console.log(`📁 [UI] 创建File对象:`, {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                lastModified: file.lastModified
+            });
+
+            // 转换为base64用于预览
             const base64 = await this.blobToBase64(blob);
             this.currentImageData = base64;
+            this.currentFile = file; // 保存文件对象用于上传
 
             // 显示预览
             this.elements.previewImg.src = base64;
@@ -920,11 +933,12 @@ class UIManager {
             this.elements.imagePreview.style.display = 'block';
             this.elements.analyzeBtn.disabled = false;
 
-            this.showToast('图片加载成功', 'success');
+            this.showToast(`图片下载成功: ${filename}`, 'success');
+            console.log(`📁 [UI] URL图片已下载为文件: ${filename}, 大小: ${file.size} bytes`);
 
         } catch (error) {
-            console.error('URL图片加载失败:', error);
-            this.showToast('图片加载失败: ' + error.message, 'error');
+            console.error('URL图片下载失败:', error);
+            this.showToast('图片下载失败: ' + error.message, 'error');
         }
     }
 
@@ -941,54 +955,15 @@ class UIManager {
      */
     clearCurrentImage() {
         this.currentImageData = null;
+        this.currentFile = null;
         this.elements.previewImg.src = '';
         this.elements.imagePreview.style.display = 'none';
         this.elements.dropPlaceholder.style.display = 'block';
         this.elements.analyzeBtn.disabled = true;
         this.elements.imageUrlInput.value = '';
-
-        // 清除反推文字
-        this.clearPromptPreview();
     }
 
-    /**
-     * 处理复制提示词
-     */
-    handleCopyPrompt() {
-        const promptText = this.elements.promptText.textContent;
-        if (!promptText) {
-            this.showToast('没有可复制的提示词', 'warning');
-            return;
-        }
-
-        navigator.clipboard.writeText(promptText).then(() => {
-            this.showToast('提示词已复制到剪贴板', 'success');
-        }).catch(error => {
-            console.error('复制失败:', error);
-            this.showToast('复制失败', 'error');
-        });
-    }
-
-    /**
-     * 显示反推文字
-     */
-    showPromptPreview(promptText) {
-        this.elements.promptText.textContent = promptText;
-        this.elements.promptContent.style.display = 'flex';
-        this.elements.copyPromptBtn.style.display = 'inline-block';
-        this.elements.promptContent.parentElement.querySelector('.prompt-placeholder').style.display = 'none';
-    }
-
-    /**
-     * 清除反推文字预览
-     */
-    clearPromptPreview() {
-        this.elements.promptText.textContent = '';
-        this.elements.promptContent.style.display = 'none';
-        this.elements.copyPromptBtn.style.display = 'none';
-        this.elements.promptContent.parentElement.querySelector('.prompt-placeholder').style.display = 'block';
-    }
-
+    
     /**
      * 显示/隐藏停止按钮
      */

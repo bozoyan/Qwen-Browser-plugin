@@ -252,10 +252,8 @@ class PopupApp {
                 this.uiManager.updateQueueInfo('图片分析完成，开始生成...', 40);
                 console.log('✅ [Popup] 图片分析完成');
 
-                // 立即显示反推文字
                 if (result.prompt) {
-                    this.uiManager.showPromptPreview(result.prompt);
-                    console.log('📝 [Popup] 反推文字已显示:', result.prompt);
+                    console.log('📝 [Popup] 反推文字已获取:', result.prompt.substring(0, 100) + '...');
                     this.uiManager.showToast('图片分析完成！', 'success');
                 } else {
                     console.warn('⚠️ [Popup] 未获取到反推文字');
@@ -307,9 +305,9 @@ class PopupApp {
         };
 
         try {
-            // 调用API处理图片
+            // 调用API处理图片，使用File对象
             await this.apiManager.processImage(
-                this.uiManager.currentImageData,
+                this.uiManager.currentFile,
                 settings,
                 callbacks
             );

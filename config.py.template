@@ -22,3 +22,15 @@ LORA_ARGS = [
     # {'modelVersionId': 310150, 'scale': 1},
     {'modelVersionId': 313167, 'scale': 1}
 ]
+
+# 模型信息字典：模型名称 → {id: modelVersionId, description: 描述}
+model_info = {
+    # FEI系列
+    'Q_FEI_ckpt-12': {'id': 310150, 'description': 'Q_FEI_ckpt-12 模型'},
+    'Q_FEIFEI_ckpt-10': {'id': 313167, 'description': 'Q_FEIFEI_ckpt-10 模型'},
+
+    # 默认Qwen模型（从API响应中看到的）
+    'Qwen-image_v1': {'id': 275167, 'description': 'Qwen-image_v1 默认模型'},
+    'MusePublic/Qwen-image': {'id': 48344, 'description': 'MusePublic Qwen-image 模型'},
+
+}
