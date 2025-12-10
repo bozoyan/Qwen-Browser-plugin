@@ -280,6 +280,67 @@ body {
     overflow-y: auto;
 }
 
+/* 设置区域分组 */
+.setting-section {
+    margin-bottom: 24px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.setting-section h4 {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #ced4da;
+}
+
+/* 模型选择下拉框 */
+.model-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    background-color: white;
+    cursor: pointer;
+}
+
+.model-select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* 复选框样式 */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+/* 新按钮样式 */
+.btn-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+}
+
 .settings-header {
     display: flex;
     justify-content: space-between;
@@ -408,6 +469,54 @@ body {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* 反推文字样式 */
+.prompt-container {
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.prompt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.prompt-header h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #495057;
+}
+
+.copy-prompt-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.copy-prompt-btn:hover {
+    background: #0056b3;
+}
+
+.prompt-text {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.4;
+    background-color: white;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    word-wrap: break-word;
 }
 
 /* 滚动条样式 */

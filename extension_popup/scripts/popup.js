@@ -171,9 +171,9 @@ class PopupApp {
             onGenerateComplete: (result) => {
                 this.uiManager.hideQueueInfo();
 
-                
                 if (result.images && result.images.length > 0) {
-                    this.uiManager.showGeneratedImages(result.images);
+                    const prompt = result.prompt || '图片反推完成';
+                    this.uiManager.showGeneratedImages(result.images, prompt);
                     this.uiManager.showToast(`成功生成 ${result.images.length} 张图片`, 'success');
                 } else {
                     this.uiManager.showToast('未生成任何图片', 'warning');

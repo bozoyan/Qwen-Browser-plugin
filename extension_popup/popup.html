@@ -90,17 +90,73 @@
                     <label for="modelScopeCookie">ModelScope Cookie:</label>
                     <textarea id="modelScopeCookie" placeholder="输入你的ModelScope Cookie" rows="4"></textarea>
                 </div>
-                <div class="setting-item">
-                    <label for="imageWidth">图片宽度:</label>
-                    <input type="number" id="imageWidth" value="1104" min="256" max="2048">
+
+                <!-- 模型设置 -->
+                <div class="setting-section">
+                    <h4>模型设置</h4>
+                    <div class="setting-item">
+                        <label for="checkpointSelect">Checkpoint模型:</label>
+                        <select id="checkpointSelect" class="model-select">
+                            <option value="">请选择Checkpoint模型</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="lora1Select">LoRA模型1:</label>
+                        <select id="lora1Select" class="model-select">
+                            <option value="">请选择LoRA模型</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="lora2Select">LoRA模型2:</label>
+                        <select id="lora2Select" class="model-select">
+                            <option value="">请选择LoRA模型</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="lora3Select">LoRA模型3:</label>
+                        <select id="lora3Select" class="model-select">
+                            <option value="">请选择LoRA模型</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-item">
+                        <label for="lora4Select">LoRA模型4:</label>
+                        <select id="lora4Select" class="model-select">
+                            <option value="">请选择LoRA模型</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="setting-item">
-                    <label for="imageHeight">图片高度:</label>
-                    <input type="number" id="imageHeight" value="1472" min="256" max="2048">
+
+                <!-- 图像设置 -->
+                <div class="setting-section">
+                    <h4>图像设置</h4>
+                    <div class="setting-item">
+                        <label for="imageWidth">图片宽度:</label>
+                        <input type="number" id="imageWidth" value="1104" min="256" max="2048">
+                    </div>
+                    <div class="setting-item">
+                        <label for="imageHeight">图片高度:</label>
+                        <input type="number" id="imageHeight" value="1472" min="256" max="2048">
+                    </div>
+                    <div class="setting-item">
+                        <label for="numImages">生成图片数量:</label>
+                        <input type="number" id="numImages" value="4" min="1" max="4">
+                    </div>
+                    <div class="setting-item">
+                        <label for="enableHires" class="checkbox-label">
+                            <input type="checkbox" id="enableHires" checked>
+                            启用高清修复
+                        </label>
+                    </div>
                 </div>
+
                 <div class="settings-actions">
                     <button id="saveSettings" class="btn btn-primary">保存设置</button>
                     <button id="resetSettings" class="btn btn-secondary">重置</button>
+                    <button id="loadModels" class="btn btn-info">加载模型</button>
                 </div>
             </div>
         </div>

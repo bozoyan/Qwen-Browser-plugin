@@ -122,6 +122,86 @@ class APIManager {
     }
     
     /**
+     * 加载模型数据
+     * @returns {Promise<Object>} - 模型数据
+     */
+    async loadModels() {
+        try {
+            // 从本地服务器加载模型配置
+            const [checkpointData, loraData] = await Promise.all([
+                this.request(`${this.baseUrl}/comfyui_modelscope/checkpoint.json`),
+                this.request(`${this.baseUrl}/comfyui_modelscope/loraArgs.json`)
+            ]);
+
+            return {
+                checkpoints: checkpointData,
+                loras: loraData
+            };
+        } catch (error) {
+            console.error('加载模型数据失败:', error);
+            // 如果从服务器加载失败，使用默认的模型数据
+            return this.getDefaultModels();
+        }
+    }
+
+    /**
+     * 获取默认模型数据
+     * @returns {Object} - 默认模型数据
+     */
+    getDefaultModels() {
+        return {
+            checkpoints: [
+                {
+                    "CheckpointName": "Qwen_Image_v1",
+                    "checkpointModelVersionId": 275167,
+                    "checkpointShowInfo": "Qwen_Image_v1.safetensors",
+                    "numInferenceSteps": 50,
+                    "guidanceScale": 4
+                },
+                {
+                    "CheckpointName": "造相-Z-Image-Turbo_master",
+                    "checkpointModelVersionId": 469191,
+                    "checkpointShowInfo": "造相-Z-Image-Turbo_master.safetensors",
+                    "numInferenceSteps": 9,
+                    "guidanceScale": 2.5
+                }
+            ],
+            loras: [
+                {
+                    "LoraName": "FEIFEI",
+                    "modelVersionId": 310150,
+                    "scale": 1
+                },
+                {
+                    "LoraName": "FEIFEI_V2",
+                    "modelVersionId": 313167,
+                    "scale": 1
+                },
+                {
+                    "LoraName": "GUA",
+                    "modelVersionId": 332699,
+                    "scale": 1
+                },
+                {
+                    "LoraName": "GUA_V2",
+                    "modelVersionId": 334516,
+                    "scale": 1
+                },
+                {
+                    "LoraName": "GUA_V8",
+                    "modelVersionId": 346999,
+                    "scale": 1
+                },
+                {
+                    "LoraName": "GUA_V9",
+                    "modelVersionId": 365553,
+                    "scale": 1
+                }
+            ]
+        };
+    }
+
+    /**
      * 生成图片
      * @param {string} prompt - 提示词
      * @param {Object} settings - 设置参数
@@ -131,14 +211,40 @@ class APIManager {
         const url = `${this.baseUrl}${CONFIG.API.ENDPOINTS.GENERATE}`;
         const F_prompt = "feifei,a photo-realistic shoot from a portrait camera angle about a young woman,妃妃,";
 
+        // 构建LoRA参数
+        const loraArgs = [];
+        for (let i = 1; i <= 4; i++) {
+            const loraKey = `lora${i}`;
+            if (settings[loraKey] && settings[loraKey].modelVersionId) {
+                loraArgs.push({
+                    modelVersionId: settings[loraKey].modelVersionId,
+                    scale: settings[loraKey].scale || 1
+                });
+            }
+        }
+
+        // 构建checkpoint参数
+        let checkpointArgs = {};
+        if (settings.checkpoint && settings.checkpoint.modelVersionId) {
+            checkpointArgs = {
+                checkpointModelVersionId: settings.checkpoint.modelVersionId,
+                checkpointShowInfo: settings.checkpoint.checkpointShowInfo || settings.checkpoint.CheckpointName
+            };
+        }
+
         const requestData = {
             prompt: F_prompt + prompt,
             model_scope_cookie: settings.modelScopeCookie,
             width: settings.imageWidth,
             height: settings.imageHeight,
-            lora_args: CONFIG.DEFAULTS.LORA_ARGS
+            num_images: settings.numImages || 4,
+            enable_hires: settings.enableHires !== false,
+            checkpoint: checkpointArgs,
+            lora_args: loraArgs.length > 0 ? loraArgs : CONFIG.DEFAULTS.LORA_ARGS,
+            num_inference_steps: settings.checkpoint?.numInferenceSteps || 50,
+            guidance_scale: settings.checkpoint?.guidanceScale || 4.0
         };
-        
+
         return await this.request(url, {
             method: 'POST',
             body: JSON.stringify(requestData)
