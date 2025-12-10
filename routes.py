@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from image_analyzer import analyze_image
 from config import ALLOWED_EXTENSIONS, MODEL_SCOPE_COOKIE, DEFAULT_WIDTH, DEFAULT_HEIGHT, LORA_ARGS, out_pic, model_info
 from utils import allowed_file, extract_csrf_token, generate_trace_id
+from task_poller import poll_task_smart, create_task_poller
 
 main_bp = Blueprint('main', __name__)
 
@@ -1147,35 +1148,65 @@ def process_image_complete():
                         task_id = potential_id
                         print(f"⚠️ 使用UUID格式的requestId: {task_id}")
 
-            # 尝试结构4: 检查所有可能的键
+            # 尝试结构4: 优先查找数字格式的taskId（轮询API需要数字格式）
             if not task_id:
-                print("🔍 搜索所有可能的任务ID字段...")
-                def find_task_id(obj, path=""):
+                print("🔍 优先搜索数字格式的taskId（轮询API需要）...")
+                def find_numeric_task_id(obj, path=""):
                     if isinstance(obj, dict):
                         for key, value in obj.items():
                             current_path = f"{path}.{key}" if path else key
-                            # 搜索可能的ID字段
-                            if key.lower() in ['taskid', 'task_id', 'id'] and value:
-                                print(f"🎯 找到可能的任务ID字段: {current_path} = {value}")
-                                return value
-                            # 搜索可能是ID的字符串字段
-                            if isinstance(value, str) and len(value) > 5:
-                                # 检查是否看起来像ID（包含数字、字母组合）
-                                if any(c.isdigit() for c in value) and len(value) < 50:
-                                    if 'request' in key.lower() or 'id' in key.lower() or key.lower() == 'code':
-                                        print(f"🎯 找到可能的ID字段: {current_path} = {value}")
-                                        return value
-                            found = find_task_id(value, current_path)
+                            # 优先搜索taskId字段
+                            if key.lower() in ['taskid', 'task_id'] and value:
+                                task_id_str = str(value)
+                                if task_id_str.isdigit():
+                                    print(f"🎯 找到数字格式的taskId: {current_path} = {task_id_str}")
+                                    return task_id_str
+                                else:
+                                    print(f"⚠️ 找到taskId但非数字格式: {current_path} = {task_id_str}")
+                            found = find_numeric_task_id(value, current_path)
                             if found:
                                 return found
                     elif isinstance(obj, list):
                         for i, item in enumerate(obj):
-                            found = find_task_id(item, f"{path}[{i}]")
+                            found = find_numeric_task_id(item, f"{path}[{i}]")
                             if found:
                                 return found
                     return None
 
-                task_id = find_task_id(result)
+                # 首先查找数字格式的taskId
+                numeric_task_id = find_numeric_task_id(result)
+                if numeric_task_id:
+                    task_id = numeric_task_id
+                    print(f"✅ 使用数字格式taskId进行轮询: {task_id}")
+                else:
+                    # 如果没找到数字ID，查找任何可能的ID字段
+                    print("🔍 未找到数字taskId，搜索所有可能的任务ID字段...")
+                    def find_any_task_id(obj, path=""):
+                        if isinstance(obj, dict):
+                            for key, value in obj.items():
+                                current_path = f"{path}.{key}" if path else key
+                                # 搜索可能的ID字段
+                                if key.lower() in ['taskid', 'task_id', 'id'] and value:
+                                    print(f"🎯 找到可能的任务ID字段: {current_path} = {value}")
+                                    return value
+                                # 搜索可能是ID的字符串字段
+                                if isinstance(value, str) and len(value) > 5:
+                                    # 检查是否看起来像ID（包含数字、字母组合）
+                                    if any(c.isdigit() for c in value) and len(value) < 50:
+                                        if 'request' in key.lower() or 'id' in key.lower() or key.lower() == 'code':
+                                            print(f"🎯 找到可能的ID字段: {current_path} = {value}")
+                                            return value
+                                found = find_any_task_id(value, current_path)
+                                if found:
+                                    return found
+                        elif isinstance(obj, list):
+                            for i, item in enumerate(obj):
+                                found = find_any_task_id(item, f"{path}[{i}]")
+                                if found:
+                                    return found
+                        return None
+
+                    task_id = find_any_task_id(result)
 
             if not task_id:
                 print("❌ 无法获取任务ID")
@@ -1242,180 +1273,79 @@ def process_image_complete():
                     print(f"🔍 尝试从完整响应中提取所有数字字段...")
                     print(f"📄 完整响应: {json.dumps(result, indent=2, ensure_ascii=False)}")
 
-            # 4. 轮询任务状态
-            print("🔄 开始轮询任务状态...")
-            import time
-            base_poll_url = 'https://www.modelscope.cn/api/v1/muse/predict/task/status'
-            max_retries = 60
-            retry_interval = 3
-            max_consecutive_errors = 3  # 最大连续异常次数
-            consecutive_errors = 0     # 当前连续异常次数
+            # 4. 使用智能轮询器查询任务状态
+            print("🔄 使用智能轮询器查询任务状态...")
+            print(f"🎯 任务ID: {task_id}")
 
-            poll_headers = {
-                'Accept': 'application/json, text/plain, */*',
-                'Cookie': cookie,
-                'Referer': 'https://www.modelscope.cn/aigc/imageGeneration?tab=advanced&presetId=5804',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
-            }
+            try:
+                # 使用新的智能轮询器
+                success, result_data = poll_task_smart(
+                    cookie=cookie,
+                    task_id=task_id,
+                    max_attempts=60,
+                    interval=3
+                )
 
-            images = []
-            for i in range(max_retries):
-                time.sleep(retry_interval)
-                print(f"🔍 第{i+1}/{max_retries}次查询任务状态")
+                if success and result_data.get('success'):
+                    # 任务成功，处理结果数据
+                    data = result_data.get('data', {})
+                    task_data = data.get('data', {}) if data.get('data') else data
 
-                try:
-                    poll_url = f'{base_poll_url}?taskId={task_id}'
-                    poll_response = requests.get(poll_url, headers=poll_headers, timeout=10)
+                    print(f"   📊 任务数据结构: {str(task_data)[:200]}...")
 
-                    if poll_response.status_code != 200:
-                        print(f"❌ 轮询请求失败: {poll_response.status_code}")
-                        consecutive_errors += 1
-                        if consecutive_errors >= max_consecutive_errors:
-                            print(f"💥 连续{max_consecutive_errors}次请求失败，停止轮询")
-                            break
-                        continue
+                    # 提取图片URL - 基于正确响应格式
+                    images = []
+                    if task_data.get('predictResult') and isinstance(task_data['predictResult'], dict):
+                        predict_result = task_data['predictResult']
 
-                    response_json = poll_response.json()
+                        # 基于实际响应结构：predictResult.images[].imageUrl
+                        if predict_result.get('images') and isinstance(predict_result['images'], list):
+                            images_data = predict_result['images']
+                            for item in images_data:
+                                if item and isinstance(item, dict) and item.get('imageUrl'):
+                                    images.append(item['imageUrl'])
 
-                    # 适配ModelScope的实际响应结构
-                    # 实际响应结构：{"Code":200,"Data":{"data":{...}},"Success":true}
-                    if (response_json.get('Success') == True and response_json.get('Code') == 200) and response_json.get('Data'):
+                            print(f"✅ 从ModelScope新结构获取到{len(images)}张图片")
+                            for i, img_url in enumerate(images, 1):
+                                print(f"   图片{i}: {img_url}")
 
-                        if isinstance(response_json['Data'], dict) and response_json['Data'].get('data'):
-                            task_data = response_json['Data']['data']
-                        else:
-                            print(f"⚠️ Data.data结构异常: {response_json.get('Data')}")
+                    if images:
+                        print(f"🎉 图片生成成功，获取到{len(images)}张图片")
 
-                            # 检查是否有错误信息表明使用了错误的ID格式
-                            error_msg = response_json.get('Data', {}).get('message', '')
-                            if 'NumberFormatException' in error_msg and 'String\' to required type \'Long\'' in error_msg:
-                                print(f"❌ 检测到ID格式错误: UUID格式无法转换为数字格式")
-                                print(f"🔄 UUID格式的taskId不被支持，需要数字格式的taskId")
-                                print(f"🔍 ModelScope API可能需要不同的端点或参数格式")
-                                print(f"📋 当前使用的是标准轮询端点，可能需要调整API调用方式")
+                        # 5. 返回最终结果
+                        result = {
+                            'success': True,
+                            'prompt': prompt,
+                            'images': images,
+                            'task_id': task_id
+                        }
 
-                            consecutive_errors += 1
-                            if consecutive_errors >= max_consecutive_errors:
-                                print(f"💥 连续{max_consecutive_errors}次数据结构异常，停止轮询")
-                                print(f"💡 建议: 检查ModelScope API文档，确认正确的轮询方式")
-                                break
-                            continue
+                        print("🎉 综合处理完成！")
+                        print(f"📝 反推文字长度: {len(prompt)}")
+                        print(f"🖼️ 生成图片数量: {len(images)}")
 
-                        # 检查task_data是否有效
-                        if not task_data:
-                            print(f"⚠️ 获取到空的task_data，继续轮询...")
-                            consecutive_errors += 1
-                            if consecutive_errors >= max_consecutive_errors:
-                                print(f"💥 连续{max_consecutive_errors}次获取空数据，停止轮询")
-                                break
-                            continue
+                        return jsonify(result)
+                    else:
+                        print("❌ 未能提取图片URL")
+                        logging.error('未能提取图片URL')
+                        return jsonify({'success': False, 'error': '图片生成成功但未找到图片URL'})
+                else:
+                    # 任务失败或超时
+                    error_info = result_data if isinstance(result_data, dict) else {}
+                    error_msg = error_info.get('error', '任务失败或超时')
 
-                        # 重置异常计数
-                        consecutive_errors = 0
-                        status = task_data.get('status', '')
+                    # 如果有指导信息，返回给用户
+                    if 'guidance' in error_info:
+                        print(f"💡 任务失败，提供指导信息")
+                        return jsonify(error_info)
+                    else:
+                        print(f"❌ 任务失败: {error_msg}")
+                        return jsonify({'success': False, 'error': error_msg})
 
-                        # 适配实际状态值：SUCCEED 而不是 COMPLETED
-                        if status == 'SUCCEED' or status == 'COMPLETED':
-                            print("🎉 任务完成！获取结果...")
-
-                            # 提取图片URL - 适配新的响应结构（参考第443行的正确实现）
-                            images = []
-
-                            # 基于实际响应结构提取图片URL
-                            if task_data.get('predictResult') and isinstance(task_data['predictResult'], dict):
-                                predict_result = task_data['predictResult']
-
-                                # 根据实际响应结构：predictResult.images[].imageUrl
-                                if predict_result.get('images') and isinstance(predict_result['images'], list):
-                                    images_data = predict_result['images']
-                                    if isinstance(images_data, list):
-                                        images = []
-                                        for item in images_data:
-                                            if item and isinstance(item, dict) and item.get('imageUrl'):
-                                                images.append(item['imageUrl'])
-
-                                        print(f"✅ 从ModelScope新结构获取到{len(images)}张图片")
-                                        for i, img_url in enumerate(images, 1):
-                                            print(f"   图片{i}: {img_url}")
-
-                                        if images:
-                                            break
-                                    else:
-                                        print("⚠️ images不是有效的列表格式")
-                                else:
-                                    print("⚠️ predictResult中未找到images数组")
-
-                                # 兼容性处理
-                                if not images and predict_result.get('results') and isinstance(predict_result['results'], list):
-                                    images = [item.get('url') for item in predict_result['results'] if item and item.get('url')]
-                                    print(f"✅ 从兼容结构获取到{len(images)}张图片")
-                                    if images:
-                                        break
-                            elif isinstance(task_data.get('predictResult'), list):
-                                images = [item.get('url') for item in task_data['predictResult'] if item and item.get('url')]
-                                print(f"✅ 从列表结构获取到{len(images)}张图片")
-                                if images:
-                                    break
-
-                            if not images:
-                                print("⚠️ 未能提取图片URL，分析响应结构...")
-                                print(f"   predictResult类型: {type(task_data.get('predictResult'))}")
-                                print(f"   predictResult内容: {task_data.get('predictResult')}")
-                                print(f"   完整task_data结构: {task_data}")
-                        elif status == 'FAILED' or status == 'ERROR' or status == 'CANCELLED':
-                            error_msg = task_data.get('errorMsg', task_data.get('message', '未知错误'))
-                            print(f"❌ 任务失败: {error_msg}")
-                            return jsonify({'success': False, 'error': f'图片生成失败: {error_msg}'})
-                        else:
-                            # 处理正在进行的任务状态
-                            progress = task_data.get('progress', {})
-                            percent = progress.get('percent', 0)
-
-                            # 根据不同的状态提供更详细的进度信息
-                            status_messages = {
-                                'PENDING': '等待中...',
-                                'RUNNING': '正在处理...',
-                                'PROCESSING': '生成中...',
-                                'QUEUED': '排队中...',
-                                'SUBMITTING': '提交中...'
-                            }
-
-                            status_detail = status_messages.get(status, f'状态: {status}')
-                            if percent > 0:
-                                print(f"⏳ 任务状态: {status_detail} 进度: {percent}%")
-                            else:
-                                print(f"⏳ 任务状态: {status_detail}")
-
-                except Exception as e:
-                    print(f"❌ 轮询异常: {str(e)}")
-                    consecutive_errors += 1
-                    if consecutive_errors >= max_consecutive_errors:
-                        print(f"💥 连续{max_consecutive_errors}次轮询异常，停止轮询")
-                        break
-                    continue
-
-            # 检查是否因连续异常而退出
-            if consecutive_errors >= max_consecutive_errors:
-                print("❌ 因连续异常超过阈值，停止图片生成")
-                return jsonify({'success': False, 'error': f'轮询异常超限，连续{max_consecutive_errors}次异常'})
-
-            if not images:
-                print("❌ 轮询超时，未获取到图片")
-                return jsonify({'success': False, 'error': '轮询超时，未获取到图片'})
-
-            # 5. 返回最终结果
-            result = {
-                'success': True,
-                'prompt': prompt,
-                'images': images,
-                'task_id': task_id
-            }
-
-            print("🎉 综合处理完成！")
-            print(f"📝 反推文字长度: {len(prompt)}")
-            print(f"🖼️ 生成图片数量: {len(images)}")
-
-            return jsonify(result)
+            except Exception as e:
+                print(f"❌ 智能轮询异常: {e}")
+                logging.error(f'智能轮询异常: {e}')
+                return jsonify({'success': False, 'error': f'轮询异常: {str(e)}'})
 
         except Exception as e:
             print(f"❌ 图片生成异常: {str(e)}")

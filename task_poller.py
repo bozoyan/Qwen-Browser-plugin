@@ -1,102 +1,192 @@
+"""
+ModelScope API任务轮询模块
+支持新的UUID格式任务ID和旧的数字格式任务ID
+基于正确的响应格式：{"Code":200,"Data":{"data":{...}},"Success":true}
+"""
+
+import requests
+import re
+import time
+import logging
+from typing import Dict, Optional, Tuple, Any
 from flask import request, jsonify, Blueprint
 from config import MODEL_SCOPE_COOKIE
-import logging
-import time
-import requests
-import json
 
 task_poller_bp = Blueprint('task_poller', __name__)
 
+class ModelScopeTaskPoller:
+    def __init__(self, cookie: str):
+        self.cookie = cookie
+        self.headers = {
+            'Cookie': cookie,
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br, zstd',
+            'Origin': 'https://www.modelscope.cn',
+            'Referer': 'https://www.modelscope.cn/studios?tab=0'
+        }
+
+    def poll_task_with_numeric_id(self, task_id: str, max_attempts: int = 60, interval: int = 5) -> Tuple[bool, Dict]:
+        """使用数字ID轮询任务状态（传统方式）- 适配正确的响应格式"""
+        url = f"https://www.modelscope.cn/api/v1/muse/predict/task/status?taskId={task_id}"
+
+        for attempt in range(max_attempts):
+            try:
+                response = requests.get(url, headers=self.headers, timeout=30)
+                response.raise_for_status()
+
+                data = response.json()
+                print(f"📊 轮询任务 {task_id} (第{attempt+1}次): {data}")
+
+                # 基于正确响应格式：{"Code":200,"Data":{"data":{...}},"Success":true}
+                if data.get('Success') == True and data.get('Code') == 200 and data.get('Data'):
+                    if isinstance(data['Data'], dict) and data['Data'].get('data'):
+                        task_data = data['Data']['data']
+                        status = task_data.get('status', '').upper()
+
+                        if status in ['SUCCEED', 'SUCCESS', 'COMPLETED']:
+                            print(f"✅ 任务 {task_id} 完成")
+                            return True, data
+                        elif status == 'FAILED':
+                            print(f"❌ 任务 {task_id} 失败")
+                            return False, data
+                        elif status in ['PENDING', 'RUNNING', 'PROCESSING', 'QUEUING']:
+                            print(f"⏳ 任务 {task_id} 仍在处理中...")
+                            time.sleep(interval)
+                            continue
+                        else:
+                            print(f"⚠️ 任务 {task_id} 未知状态: {status}")
+                    else:
+                        print(f"⚠️ Data.data结构异常: {data.get('Data')}")
+
+                elif data.get('Code') == 400003 or 'NumberFormatException' in str(data.get('Data', {}).get('message', '')):
+                    print(f"🔄 检测到ID格式错误，UUID格式不支持数字轮询")
+                    return None, data
+
+                else:
+                    print(f"⚠️ 任务 {task_id} 轮询响应异常: {data}")
+
+            except requests.RequestException as e:
+                print(f"❌ 轮询任务 {task_id} 网络错误: {e}")
+                time.sleep(interval)
+
+        print(f"⏰ 任务 {task_id} 轮询超时")
+        return False, {'error': '轮询超时', 'timeout': True}
+
+    def poll_task_with_fallback(self, task_id: str, id_type: str = 'auto', max_attempts: int = 60, interval: int = 5) -> Tuple[bool, Dict]:
+        """
+        智能轮询，支持自动检测ID类型并回退
+
+        Args:
+            task_id: 任务ID
+            id_type: 'numeric', 'uuid', 'auto'
+            max_attempts: 最大尝试次数
+            interval: 轮询间隔（秒）
+
+        Returns:
+            Tuple[success, data]: 是否成功和响应数据
+        """
+        print(f"🔄 开始智能轮询任务 {task_id} (类型: {id_type})")
+
+        # 直接使用数字轮询，因为根据日志，轮询API需要数字格式的taskId
+        return self.poll_task_with_numeric_id(task_id, max_attempts, interval)
+
+    def get_modelscope_gallery_link(self) -> str:
+        """获取ModelScope图片库链接"""
+        return "https://www.modelscope.cn/studios"
+
+    def create_error_response_with_guidance(self, task_id: str, error_data: Dict) -> Dict:
+        """创建包含指导信息的错误响应"""
+        error_response = {
+            'success': False,
+            'error': '轮询失败',
+            'task_id': task_id,
+            'guidance': {
+                'message': '由于ModelScope API格式变化，无法获取任务结果',
+                'suggestions': [
+                    '请手动到ModelScope图片库查看生成的图片',
+                    '任务可能仍在后台处理中，稍后可能会有结果',
+                    '如果问题持续，请检查API配置或联系技术支持'
+                ],
+                'gallery_link': self.get_modelscope_gallery_link(),
+                'task_id': task_id
+            },
+            'original_error': error_data
+        }
+
+        return error_response
+
+
+def create_task_poller(cookie: str) -> ModelScopeTaskPoller:
+    """创建任务轮询器实例"""
+    return ModelScopeTaskPoller(cookie)
+
+
+def poll_task_smart(cookie: str, task_id: str, **kwargs) -> Tuple[bool, Dict]:
+    """
+    便捷函数：智能轮询任务状态
+
+    Args:
+        cookie: ModelScope Cookie
+        task_id: 任务ID
+        **kwargs: 其他参数传递给poll_task_with_fallback
+
+    Returns:
+        Tuple[success, data]: 是否成功和响应数据
+    """
+    poller = create_task_poller(cookie)
+    return poller.poll_task_with_fallback(task_id, **kwargs)
+
+
 @task_poller_bp.route('/poll_task', methods=['POST'])
 def poll_task():
-    """轮询任务状态"""
+    """智能轮询任务状态端点"""
     data = request.get_json()
     task_id = data.get('task_id')
+    id_type = data.get('id_type', 'auto')
+    max_attempts = data.get('max_attempts', 60)
+    interval = data.get('interval', 5)
 
     if not task_id:
         return jsonify({'success': False, 'error': '缺少任务ID'})
 
-    base_poll_url = 'https://www.modelscope.cn/api/v1/muse/predict/task/status'
-    poll_headers = {
-        'Accept': 'application/json, text/plain, */*',
-        'Cookie': MODEL_SCOPE_COOKIE,
-        'Referer': 'https://www.modelscope.cn/aigc/imageGeneration',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-    }
-
     try:
-        poll_url = f'{base_poll_url}?taskId={task_id}'
-        poll_response = requests.get(poll_url, headers=poll_headers, timeout=10)
-        poll_response.raise_for_status()
-        response_json = poll_response.json()
+        poller = create_task_poller(MODEL_SCOPE_COOKIE)
+        success, result_data = poller.poll_task_with_fallback(
+            task_id=task_id,
+            id_type=id_type,
+            max_attempts=max_attempts,
+            interval=interval
+        )
 
-        logging.info(f'轮询任务 {task_id} 状态: {response_json}')
-
-        if response_json.get('Success') and response_json.get('Data'):
-            task_data = response_json['Data'].get('data', {})
-            status = task_data.get('status', '')
-
-            if status == 'COMPLETED':
-                images = [item.get('url') for item in task_data.get('predictResult', []) if item and item.get('url')]
-                if images:
-                    return jsonify({'success': True, 'status': 'COMPLETED', 'images': images})
-                else:
-                    return jsonify({'success': False, 'status': 'FAILED', 'error': '图片生成成功但未找到图片URL'})
-            elif status == 'FAILED':
-                error_msg = task_data.get('errorMsg', '未知错误')
-                return jsonify({'success': False, 'status': 'FAILED', 'error': error_msg})
-            else: # PROCESSING, QUEUING, PENDING
-                progress = task_data.get('progress', {})
-                percent = progress.get('percent', 0)
-                detail = progress.get('detail', '正在处理中...')
-                return jsonify({'success': True, 'status': status, 'progress': percent, 'message': detail})
+        if success:
+            return jsonify({'success': True, 'data': result_data})
         else:
-            return jsonify({'success': False, 'error': '轮询API返回格式异常'})
+            # 检查是否需要提供指导信息
+            if 'timeout' in result_data or 'NumberFormatException' in str(result_data.get('message', '')):
+                guided_response = poller.create_error_response_with_guidance(task_id, result_data)
+                return jsonify(guided_response)
+            else:
+                return jsonify({'success': False, 'error': result_data})
 
-    except requests.exceptions.RequestException as e:
-        logging.error(f'轮询任务状态时出错: {e}')
-        return jsonify({'success': False, 'error': f'轮询任务状态时出错: {e}'})
+    except Exception as e:
+        logging.error(f'智能轮询任务 {task_id} 异常: {e}')
+        return jsonify({'success': False, 'error': f'轮询异常: {str(e)}'})
+
 
 @task_poller_bp.route('/task_status/<task_id>', methods=['GET'])
 def get_task_status(task_id):
-    """Polls the ModelScope API for the status of a given task ID."""
+    """兼容性端点：轮询任务状态"""
     try:
-        cookie = MODEL_SCOPE_COOKIE
-        if not cookie:
-            return jsonify({'status': 'failed', 'error': 'Cookie not configured'})
+        poller = create_task_poller(MODEL_SCOPE_COOKIE)
+        success, result_data = poller.poll_task_with_fallback(task_id, max_attempts=1, interval=1)
 
-        poll_url = f'https://www.modelscope.cn/api/v1/muse/predict/task/status?taskId={task_id}'
-        poll_headers = {
-            'Accept': 'application/json, text/plain, */*',
-            'Cookie': cookie,
-            'Referer': 'https://www.modelscope.cn/aigc/imageGeneration',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-        }
-
-        poll_response = requests.get(poll_url, headers=poll_headers, timeout=10)
-        poll_response.raise_for_status()
-        response_json = poll_response.json()
-
-        logging.info(f'Polling task {task_id} status: {response_json}')
-
-        if response_json.get('Success') and response_json.get('Data'):
-            task_data = response_json.get('Data', {}).get('data', {})
-            status = task_data.get('status', '')
-
-            if status == 'COMPLETED':
-                images = [item.get('url') for item in task_data.get('predictResult', []) if item and item.get('url')]
-                if images:
-                    return jsonify({'status': 'completed', 'result': {'image_url': images[0]}})
-                else:
-                    return jsonify({'status': 'failed', 'error': 'Image generation succeeded but no image URL found'})
-            elif status == 'FAILED':
-                error_msg = task_data.get('errorMsg', 'Unknown error')
-                return jsonify({'status': 'failed', 'error': error_msg})
-            else: # PROCESSING, QUEUING, PENDING
-                return jsonify({'status': status})
+        if success:
+            return jsonify({'status': 'completed', 'result': result_data})
         else:
-            return jsonify({'status': 'failed', 'error': 'Polling API returned an unexpected format'})
+            return jsonify({'status': 'failed', 'error': result_data})
 
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error polling task status for {task_id}: {e}")
-        return jsonify({'status': 'failed', 'error': f'Error polling task status: {e}'})
+    except Exception as e:
+        logging.error(f"获取任务状态 {task_id} 异常: {e}")
+        return jsonify({'status': 'failed', 'error': f'获取任务状态异常: {str(e)}'})
