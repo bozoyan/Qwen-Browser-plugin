@@ -114,6 +114,36 @@ const CONFIG = {
         CANCELLED: 'cancelled'
     },
     
+    // 分辨率配置
+    RESOLUTIONS: {
+        "SM": {
+            "21:9": {"width": 1024, "height": 394},
+            "16:9": {"width": 1024, "height": 576},
+            "4:3": {"width": 1024, "height": 768},
+            "1:1": {"width": 1024, "height": 1024},
+            "3:4": {"width": 768, "height": 1024},
+            "9:16": {"width": 576, "height": 1024}
+        },
+        "HD": {
+            "1:1": {"width": 1328, "height": 1328},
+            "2:3": {"width": 1056, "height": 1584},
+            "3:4": {"width": 1104, "height": 1472},
+            "4:3": {"width": 1472, "height": 1104},
+            "3:2": {"width": 1584, "height": 1056},
+            "16:9": {"width": 1664, "height": 936},
+            "9:16": {"width": 936, "height": 1664}
+        },
+        "2k": {
+            "1:1": {"width": 2048, "height": 2048},
+            "2:3": {"width": 1664, "height": 2496},
+            "3:4": {"width": 1728, "height": 2304},
+            "4:3": {"width": 2304, "height": 1728},
+            "3:2": {"width": 2496, "height": 1664},
+            "16:9": {"width": 2560, "height": 1440},
+            "9:16": {"width": 1440, "height": 2560}
+        }
+    },
+
     // 日志级别
     LOG_LEVELS: {
         INFO: 'info',

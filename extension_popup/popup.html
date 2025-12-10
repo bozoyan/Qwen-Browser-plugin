@@ -146,13 +146,43 @@
                 <!-- 图像设置 -->
                 <div class="setting-section">
                     <h4>图像设置</h4>
+
+                    <!-- 分辨率快速选择 -->
+                    <div class="setting-item">
+                        <label>分辨率设置:</label>
+                        <div class="resolution-selector">
+                            <div class="resolution-row">
+                                <label>尺寸质量:</label>
+                                <select id="resolutionSize" class="model-select">
+                                    <option value="SM">SM (标清)</option>
+                                    <option value="HD" selected>HD (高清)</option>
+                                    <option value="2k">2K (超清)</option>
+                                </select>
+                            </div>
+                            <div class="resolution-row">
+                                <label>宽高比:</label>
+                                <select id="resolutionRatio" class="model-select">
+                                    <option value="1:1">1:1 (正方形)</option>
+                                    <option value="2:3">2:3 (竖屏)</option>
+                                    <option value="3:4">3:4 (竖屏)</option>
+                                    <option value="4:3">4:3 (横屏)</option>
+                                    <option value="3:2">3:2 (横屏)</option>
+                                    <option value="16:9">16:9 (宽屏)</option>
+                                    <option value="9:16" selected>9:16 (手机)</option>
+                                </select>
+                            </div>
+                            <button id="applyResolution" class="btn btn-info btn-small">应用分辨率</button>
+                        </div>
+                    </div>
+
+                    <!-- 自定义尺寸 -->
                     <div class="setting-item">
                         <label for="imageWidth">图片宽度:</label>
-                        <input type="number" id="imageWidth" value="1104" min="256" max="2048">
+                        <input type="number" id="imageWidth" value="936" min="256" max="4096">
                     </div>
                     <div class="setting-item">
                         <label for="imageHeight">图片高度:</label>
-                        <input type="number" id="imageHeight" value="1472" min="256" max="2048">
+                        <input type="number" id="imageHeight" value="1664" min="256" max="4096">
                     </div>
                     <div class="setting-item">
                         <label for="numImages">生成图片数量:</label>

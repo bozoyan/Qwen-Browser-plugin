@@ -618,3 +618,40 @@ body {
     font-size: 12px;
 }
 
+/* 分辨率选择器样式 */
+.resolution-selector {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px;
+    background-color: #f8f9fa;
+}
+
+.resolution-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+}
+
+.resolution-row:last-child {
+    margin-bottom: 0;
+}
+
+.resolution-row label {
+    min-width: 80px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 14px;
+    margin: 0;
+}
+
+.resolution-row select {
+    flex: 1;
+    margin: 0;
+}
+
+.resolution-selector button {
+    margin-top: 8px;
+    width: 100%;
+}
+

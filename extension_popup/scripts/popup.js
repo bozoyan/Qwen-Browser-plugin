@@ -95,6 +95,9 @@ class PopupApp {
             console.error('❌ [Popup] stopBtn元素未找到');
         }
 
+        // 绑定分辨率选择器事件
+        this.bindResolutionEvents();
+
         // 监听窗口关闭事件
         window.addEventListener('beforeunload', () => {
             if (this.isProcessing) {
@@ -317,6 +320,83 @@ class PopupApp {
         }
     }
     
+    /**
+     * 绑定分辨率选择器事件
+     */
+    bindResolutionEvents() {
+        const resolutionSizeSelect = document.getElementById('resolutionSize');
+        const resolutionRatioSelect = document.getElementById('resolutionRatio');
+        const applyResolutionBtn = document.getElementById('applyResolution');
+
+        if (resolutionSizeSelect && resolutionRatioSelect && applyResolutionBtn) {
+            console.log('✅ [Popup] 分辨率选择器元素已找到');
+
+            // 应用分辨率按钮点击事件
+            applyResolutionBtn.addEventListener('click', () => {
+                this.applySelectedResolution();
+            });
+
+            // 当选择改变时，自动应用分辨率
+            resolutionSizeSelect.addEventListener('change', () => {
+                this.applySelectedResolution();
+            });
+
+            resolutionRatioSelect.addEventListener('change', () => {
+                this.applySelectedResolution();
+            });
+
+            console.log('✅ [Popup] 分辨率选择器事件已绑定');
+        } else {
+            console.error('❌ [Popup] 分辨率选择器元素未找到', {
+                resolutionSize: !!resolutionSizeSelect,
+                resolutionRatio: !!resolutionRatioSelect,
+                applyButton: !!applyResolutionBtn
+            });
+        }
+    }
+
+    /**
+     * 应用选择的分辨率
+     */
+    applySelectedResolution() {
+        const resolutionSizeSelect = document.getElementById('resolutionSize');
+        const resolutionRatioSelect = document.getElementById('resolutionRatio');
+        const imageWidthInput = document.getElementById('imageWidth');
+        const imageHeightInput = document.getElementById('imageHeight');
+
+        if (!resolutionSizeSelect || !resolutionRatioSelect || !imageWidthInput || !imageHeightInput) {
+            console.error('❌ [Popup] 分辨率控件未找到');
+            return;
+        }
+
+        const selectedSize = resolutionSizeSelect.value;
+        const selectedRatio = resolutionRatioSelect.value;
+
+        console.log(`🔧 [Popup] 应用分辨率: ${selectedSize} - ${selectedRatio}`);
+
+        // 获取分辨率配置
+        const resolutions = CONFIG.RESOLUTIONS;
+        if (resolutions[selectedSize] && resolutions[selectedSize][selectedRatio]) {
+            const { width, height } = resolutions[selectedSize][selectedRatio];
+
+            // 设置宽度和高度
+            imageWidthInput.value = width;
+            imageHeightInput.value = height;
+
+            console.log(`✅ [Popup] 分辨率已应用: ${width}x${height}`);
+
+            // 显示提示
+            if (this.uiManager && this.uiManager.showToast) {
+                this.uiManager.showToast(`分辨率已应用: ${selectedSize} ${selectedRatio} (${width}x${height})`, 'success');
+            }
+        } else {
+            console.error(`❌ [Popup] 未找到分辨率配置: ${selectedSize} - ${selectedRatio}`);
+            if (this.uiManager && this.uiManager.showToast) {
+                this.uiManager.showToast('未找到对应的分辨率配置', 'error');
+            }
+        }
+    }
+
     /**
      * 获取应用状态
      */
