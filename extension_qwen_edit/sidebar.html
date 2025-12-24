@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen图片编辑工具</title>
+  <link rel="stylesheet" href="styles/sidebar.css">
+</head>
+<body>
+  <div class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <h1>🎨 Qwen图片编辑</h1>
+      <button id="settingsBtn" class="icon-btn" title="设置">⚙️</button>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div id="mainContent" class="main-content">
+      <!-- 快速编辑区域(右键菜单触发) -->
+      <div id="quickEditSection" class="section" style="display: none;">
+        <h2>图片编辑</h2>
+
+        <!-- 原图预览 -->
+        <div class="preview-box">
+          <div class="preview-label">原图:</div>
+          <img id="originalImage" src="" alt="原图" />
+          <div class="image-info" id="imageInfo"></div>
+        </div>
+
+        <!-- 编辑提示词输入 -->
+        <div class="input-group">
+          <label for="editPrompt">编辑提示词:</label>
+          <textarea id="editPrompt" rows="3" placeholder="描述你想要的修改,例如: 给图中的狗戴上一个生日帽"></textarea>
+        </div>
+
+        <!-- 提交按钮 -->
+        <button id="submitEditBtn" class="btn btn-primary">开始编辑</button>
+
+        <!-- 进度显示 -->
+        <div id="editProgress" class="progress-section" style="display: none;">
+          <div class="progress-info" id="progressInfo">正在处理...</div>
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="task-info" id="taskInfo"></div>
+        </div>
+
+        <!-- 结果显示 -->
+        <div id="editResult" class="result-section" style="display: none;">
+          <div class="result-label">编辑结果:</div>
+          <div id="resultImages" class="result-images"></div>
+          <button id="downloadAllBtn" class="btn btn-secondary">下载全部</button>
+        </div>
+      </div>
+
+      <!-- 自定义编辑区域 -->
+      <div id="customEditSection" class="section">
+        <h2>自定义编辑</h2>
+
+        <!-- 多图输入 -->
+        <div class="input-group">
+          <label>图片输入 (支持URL或上传本地图片):</label>
+          <div class="image-input-tabs">
+            <button class="tab-btn active" data-tab="url">URL输入</button>
+            <button class="tab-btn" data-tab="upload">本地上传</button>
+          </div>
+
+          <!-- URL输入面板 -->
+          <div id="urlTab" class="tab-content active">
+            <div class="image-url-container">
+              <div class="input-row">
+                <input type="text" class="image-url-input" placeholder="输入图片URL" />
+                <button class="btn-add-url">添加</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 本地上传面板 -->
+          <div id="uploadTab" class="tab-content">
+            <div class="upload-area" id="uploadArea">
+              <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+              <div class="upload-placeholder">
+                <div class="upload-icon">📁</div>
+                <p>点击或拖拽上传图片</p>
+                <p class="text-muted">支持 PNG、JPG、JPEG、GIF、BMP</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 图片缩略图列表 -->
+          <div id="imageThumbnails" class="image-thumbnails"></div>
+
+          <button id="addImageBtn" class="btn btn-small">+ 添加图片</button>
+        </div>
+
+        <!-- 提示词输入 -->
+        <div class="input-group">
+          <label for="customPrompt">正向提示词:</label>
+          <textarea id="customPrompt" rows="3" placeholder="输入正向提示词,建议使用英文"></textarea>
+        </div>
+
+        <!-- 负向提示词 -->
+        <div class="input-group">
+          <label for="negativePrompt">负向提示词 (可选):</label>
+          <textarea id="negativePrompt" rows="2" placeholder="输入不希望出现的内容"></textarea>
+        </div>
+
+        <!-- 分辨率选择 -->
+        <div class="input-group">
+          <label>分辨率:</label>
+          <div class="resolution-select">
+            <select id="presetResolution">
+              <option value="">选择预设...</option>
+              <option value="1024x1024">1024x1024 (方形)</option>
+              <option value="1280x720">1280x720 (横屏)</option>
+              <option value="720x1280">720x1280 (竖屏)</option>
+              <option value="1920x1080">1920x1080 (全高清)</option>
+              <option value="1080x1920">1080x1920 (手机竖屏)</option>
+              <option value="custom">自定义</option>
+            </select>
+            <div id="customResolution" class="custom-resolution" style="display: none;">
+              <input type="number" id="customWidth" placeholder="宽" min="64" max="1664" />
+              <span>x</span>
+              <input type="number" id="customHeight" placeholder="高" min="64" max="1664" />
+            </div>
+          </div>
+          <div class="resolution-hint">
+            提示: SD系列:[64x64,2048x2048], FLUX:[64x64,1024x1024], Qwen-Image:[64x64,1664x1664]
+          </div>
+        </div>
+
+        <!-- 高级选项 -->
+        <details class="advanced-options">
+          <summary>高级选项</summary>
+          <div class="input-group">
+            <label for="steps">采样步数 (1-100):</label>
+            <input type="number" id="steps" min="1" max="100" value="30" />
+          </div>
+          <div class="input-group">
+            <label for="guidance">引导系数 (1.5-20):</label>
+            <input type="number" id="guidance" min="1.5" max="20" step="0.1" value="3.5" />
+          </div>
+          <div class="input-group">
+            <label for="seed">随机种子 (可选):</label>
+            <input type="number" id="seed" placeholder="留空为随机" />
+          </div>
+        </details>
+
+        <!-- 提交按钮 -->
+        <button id="submitCustomBtn" class="btn btn-primary">生成图片</button>
+
+        <!-- 自定义结果显示 -->
+        <div id="customResult" class="result-section" style="display: none;">
+          <div class="result-label">生成结果:</div>
+          <div id="customResultImages" class="result-images"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div id="settingsPanel" class="settings-panel" style="display: none;">
+      <div class="settings-header">
+        <h2>设置</h2>
+        <button id="closeSettings" class="close-btn">×</button>
+      </div>
+
+      <div class="settings-content">
+        <!-- API Token -->
+        <div class="setting-item">
+          <label for="apiToken">ModelScope Token</label>
+          <div class="token-input-wrapper">
+            <input type="password" id="apiToken" class="token-input" placeholder="请输入你的ModelScope Token" />
+            <button id="toggleTokenVisibility" class="visibility-toggle" type="button" title="显示/隐藏">
+              <span class="eye-icon">👁️</span>
+            </button>
+          </div>
+          <div class="setting-hint">
+            从 <a href="https://modelscope.cn/my/myaccesstoken" target="_blank">魔搭社区</a> 获取你的专属Token
+          </div>
+          <div class="token-status" id="tokenStatus">
+            <span class="status-icon">⚠️</span>
+            <span class="status-text">未设置Token</span>
+          </div>
+        </div>
+
+        <!-- 模型选择 -->
+        <div class="setting-item">
+          <label for="modelSelect">默认模型:</label>
+          <select id="modelSelect" class="modern-select">
+            <option value="Qwen/Qwen-Image-Edit-2511">Qwen/Qwen-Image-Edit-2511 (推荐)</option>
+            <option value="custom">自定义模型</option>
+          </select>
+          <input type="text" id="customModel" placeholder="输入自定义模型ID" class="modern-input" style="display: none;" />
+        </div>
+
+        <!-- 默认分辨率 -->
+        <div class="setting-item">
+          <label>默认分辨率:</label>
+          <div class="resolution-inputs">
+            <input type="number" id="defaultWidth" placeholder="宽" min="64" max="2048" value="1280" class="modern-input" />
+            <span class="resolution-separator">×</span>
+            <input type="number" id="defaultHeight" placeholder="高" min="64" max="2048" value="1920" class="modern-input" />
+          </div>
+        </div>
+
+        <!-- 保存按钮 -->
+        <div class="settings-actions">
+          <button id="saveSettings" class="btn btn-primary">保存设置</button>
+          <button id="resetSettings" class="btn btn-secondary">重置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast 通知容器 -->
+    <div id="toastContainer" class="toast-container"></div>
+  </div>
+
+  <script src="scripts/api.js"></script>
+  <script src="scripts/sidebar.js"></script>
+</body>
+</html>

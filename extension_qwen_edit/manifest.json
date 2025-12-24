@@ -1,23 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "图片反推+魔搭生图",
-  "version": "1.0.1",
-  "description": "基于VL模型的图片内容分析与魔搭图片生成工具",
+  "name": "Qwen图片编辑工具",
+  "version": "2.0.0",
+  "description": "基于魔搭社区API的图片编辑生成工具,支持右键图片编辑和侧边栏操作",
   "permissions": [
     "storage",
     "activeTab",
     "contextMenus",
-    "scripting"
+    "scripting",
+    "sidePanel"
   ],
   "background": {
     "service_worker": "scripts/background.js"
   },
   "host_permissions": [
+    "https://api-inference.modelscope.cn/*",
     "<all_urls>"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "图片反推+魔搭生图"
+    "default_title": "打开Qwen图片编辑工具"
   },
   "icons": {
     "16": "icons/icon16.png",
@@ -30,12 +31,9 @@
       "js": ["scripts/content.js"]
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["modal.html", "modal.css", "styles/content.css"],
-      "matches": ["<all_urls>"]
-    }
-  ],
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; img-src https: data:;"
   }
