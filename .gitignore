@@ -2,7 +2,11 @@
 __pycache__/
 *.py[codz]
 *$py.class
-cs.py
+
+vlm.py
+edit.py
+
+
 backup
 # 忽略 uploads 文件夹中的所有文件
 uploads/*
